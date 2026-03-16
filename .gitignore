@@ -1,0 +1,9 @@
+*.db
+*.sqlite
+*.sqlite3
+
+node_modules/
+backend/node_modules/
+backend/.env
+backend/logs/
+frontend/node_modules/

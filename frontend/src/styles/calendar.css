@@ -1,0 +1,42 @@
+.rbc-calendar {
+  @apply font-sans;
+}
+.rbc-time-header {
+  @apply bg-slate-50 border-b-slate-200 py-2;
+}
+.rbc-header {
+  @apply font-medium text-slate-700 border-none py-2 text-sm uppercase tracking-wider;
+}
+.rbc-time-view {
+  @apply border-slate-200 rounded-lg overflow-hidden;
+}
+.rbc-time-content {
+  @apply border-t-0;
+}
+.rbc-timeslot-group {
+  @apply border-b-slate-200 min-h-[60px] transition-colors;
+}
+.rbc-day-slot .rbc-time-slot {
+  @apply border-t-slate-50;
+}
+.rbc-day-slot .rbc-time-slot:hover {
+  @apply bg-blue-50/50 cursor-pointer;
+}
+.rbc-event {
+  @apply bg-transparent outline-none ring-0 shadow-none hover:bg-transparent focus:outline-none p-0;
+}
+.rbc-event.rbc-selected {
+  @apply ring-2 ring-blue-500 ring-offset-1 bg-transparent;
+}
+.rbc-current-time-indicator {
+  @apply bg-red-400 h-[2px] shadow-sm before:content-[''] before:absolute before:w-2 before:h-2 before:bg-red-400 before:rounded-full before:-ml-1 before:-mt-[3px];
+}
+.rbc-allday-cell {
+  @apply hidden; /* Hide all-day row for clinic setting */
+}
+.rbc-time-header-content {
+  @apply border-l-slate-200;
+}
+.rbc-day-bg {
+  @apply border-l-slate-200;
+}

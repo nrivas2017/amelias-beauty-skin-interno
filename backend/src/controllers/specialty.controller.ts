@@ -1,0 +1,86 @@
+import { Request, Response, NextFunction } from "express";
+import db from "../config/database";
+
+export const getSpecialties = async (
+  _: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const specialties = await db("specialties").orderBy("name", "asc");
+    res.json(specialties);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const createSpecialty = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<any> => {
+  try {
+    const { name, is_active } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "El nombre de la especialidad es obligatorio" });
+    }
+
+    const [id] = await db("specialties").insert({
+      name,
+      is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1,
+    });
+
+    res.status(201).json({ id, message: "Especialidad creada exitosamente" });
+  } catch (err) {
+    const dbError = err as { code?: string };
+
+    if (dbError.code === "SQLITE_CONSTRAINT") {
+      return res
+        .status(400)
+        .json({ message: "Ya existe una especialidad con este nombre" });
+    }
+    next(err);
+  }
+};
+
+export const updateSpecialty = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { name, is_active } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "El nombre de la especialidad es obligatorio" });
+    }
+
+    const updatedRows = await db("specialties")
+      .where({ id })
+      .update({
+        name,
+        is_active: is_active ? 1 : 0,
+      });
+
+    if (updatedRows === 0) {
+      return res.status(404).json({ message: "Especialidad no encontrada" });
+    }
+
+    res.json({ message: "Especialidad actualizada exitosamente" });
+  } catch (err) {
+    const dbError = err as { code?: string };
+
+    if (dbError.code === "SQLITE_CONSTRAINT") {
+      return res
+        .status(400)
+        .json({ message: "Ya existe una especialidad con este nombre" });
+    }
+    next(err);
+  }
+};
