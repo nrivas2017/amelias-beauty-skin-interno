@@ -1,6 +1,7 @@
 import { useState, type FunctionComponent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
+import { showAlert } from "@/lib/alerts";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +61,7 @@ const PatientsPage: FunctionComponent = () => {
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       closeModal();
     },
-    onError: (err: any) => alert("Error al crear: " + err.message),
+    onError: (err: any) => showAlert.error("Error al crear", err.message),
   });
 
   const updateMutation = useMutation({
@@ -75,7 +76,7 @@ const PatientsPage: FunctionComponent = () => {
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       closeModal();
     },
-    onError: (err: any) => alert("Error al actualizar: " + err.message),
+    onError: (err: any) => showAlert.error("Error al actualizar", err.message),
   });
 
   const handleOpenCreate = () => {
@@ -112,7 +113,7 @@ const PatientsPage: FunctionComponent = () => {
 
   const handleSave = () => {
     if (!formData.full_name.trim() || !formData.phone.trim()) {
-      alert("El nombre completo y el teléfono son obligatorios.");
+      showAlert.warning("Campos incompletos", "El nombre completo y el teléfono son obligatorios.");
       return;
     }
 

@@ -1,9 +1,12 @@
 import type {
+  Appointment,
+  AppointmentFilters,
   CreateAppointmentDTO,
   CreatePatientDTO,
   CreateServiceDTO,
   CreateSpecialtyDTO,
   CreateStaffDTO,
+  LaserClinicalRecord,
   Patient,
   Service,
   Session,
@@ -18,7 +21,19 @@ import type {
 const API_URL = "http://localhost:3000/api";
 
 export const api = {
-  // --- MANTENEDOR DE PERSONAL (STAFF) ---
+  // ─── CATALOGS ────────────────────────────────────────────────────────────
+  getAppointmentStatuses: async (): Promise<any[]> => {
+    const res = await fetch(`${API_URL}/catalogs/appointment-statuses`);
+    if (!res.ok) throw new Error("Error fetching appointment statuses");
+    return res.json();
+  },
+  getSessionStatuses: async (): Promise<any[]> => {
+    const res = await fetch(`${API_URL}/catalogs/session-statuses`);
+    if (!res.ok) throw new Error("Error fetching session statuses");
+    return res.json();
+  },
+
+  // ─── PERSONAL (STAFF) ────────────────────────────────────────────────────
   getStaff: async (): Promise<Staff[]> => {
     const res = await fetch(`${API_URL}/staff`);
     if (!res.ok) throw new Error("Error fetching staff");
@@ -45,7 +60,8 @@ export const api = {
     if (!res.ok) throw new Error("Error updating staff");
     return res.json();
   },
-  // --- MANTENEDOR DE SERVICIOS ---
+
+  // ─── SERVICIOS ────────────────────────────────────────────────────────────
   getServices: async (): Promise<Service[]> => {
     const res = await fetch(`${API_URL}/services`);
     if (!res.ok) throw new Error("Error fetching services");
@@ -73,6 +89,7 @@ export const api = {
     return res.json();
   },
 
+  // ─── ESPECIALIDADES ───────────────────────────────────────────────────────
   getSpecialties: async (): Promise<Specialty[]> => {
     const res = await fetch(`${API_URL}/specialties`);
     if (!res.ok) throw new Error("Error fetching specialties");
@@ -106,7 +123,7 @@ export const api = {
     return res.json();
   },
 
-  // --- Pacientes ---
+  // ─── PACIENTES ────────────────────────────────────────────────────────────
   getPatients: async (): Promise<Patient[]> => {
     const res = await fetch(`${API_URL}/patients`);
     if (!res.ok) throw new Error("Error fetching patients");
@@ -139,7 +156,9 @@ export const api = {
     return res.json();
   },
 
-  // --- Citas (Appointments & Sessions) ---
+  // ─── CITAS Y SESIONES ─────────────────────────────────────────────────────
+
+  /** Sesiones del calendario (con filtro opcional por fecha) */
   getSessions: async (date?: string): Promise<Session[]> => {
     const url = date
       ? `${API_URL}/appointments/sessions?date=${date}`
@@ -148,34 +167,158 @@ export const api = {
     if (!res.ok) throw new Error("Error fetching sessions");
     return res.json();
   },
-  createAppointment: async (data: CreateAppointmentDTO): Promise<Session> => {
+
+  /** Listado de reservas con filtros opcionales */
+  getAppointments: async (
+    filters?: AppointmentFilters,
+  ): Promise<Appointment[]> => {
+    const params = new URLSearchParams();
+    if (filters?.patient_id)
+      params.set("patient_id", String(filters.patient_id));
+    if (filters?.service_id)
+      params.set("service_id", String(filters.service_id));
+    if (filters?.status_id) params.set("status_id", String(filters.status_id));
+    if (filters?.date_from) params.set("date_from", filters.date_from);
+    if (filters?.date_to) params.set("date_to", filters.date_to);
+    const qs = params.toString();
+    const res = await fetch(`${API_URL}/appointments${qs ? `?${qs}` : ""}`);
+    if (!res.ok) throw new Error("Error fetching appointments");
+    return res.json();
+  },
+
+  /** Detalle de una reserva (incluye sesiones y ficha láser si aplica) */
+  getAppointmentById: async (id: string | number): Promise<Appointment> => {
+    const res = await fetch(`${API_URL}/appointments/${id}`);
+    if (!res.ok) throw new Error("Error fetching appointment");
+    return res.json();
+  },
+
+  /** Crear nueva reserva (con una o varias sesiones) */
+  createAppointment: async (
+    data: CreateAppointmentDTO,
+  ): Promise<{ appointment_id: number }> => {
     const res = await fetch(`${API_URL}/appointments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error creating appointment");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error creating appointment");
+    }
     return res.json();
   },
+
+  /** Agregar sesión a reserva existente */
+  addSession: async (
+    appointmentId: string | number,
+    data: {
+      staff_id: string | number;
+      start_date_time: string;
+      end_date_time: string;
+      estimated_duration_minutes?: number;
+      notes?: string;
+    },
+  ): Promise<{ session_id: number; session_number: number }> => {
+    const res = await fetch(
+      `${API_URL}/appointments/${appointmentId}/sessions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error adding session");
+    }
+    return res.json();
+  },
+
+  /** Actualizar / reagendar una sesión */
   updateSession: async (
     id: string | number,
     data: UpdateSessionDTO,
-  ): Promise<Session> => {
+  ): Promise<{ ok: boolean }> => {
     const res = await fetch(`${API_URL}/appointments/sessions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error updating session");
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error updating session");
+    }
     return res.json();
   },
+
+  /** Eliminar una sesión (si no ha sido completada/finalizada) */
+  deleteSession: async (id: string | number): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_URL}/appointments/sessions/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error al eliminar la sesión");
+    }
+    return res.json();
+  },
+
+  /** Cancelar reserva completa */
   cancelAppointment: async (
     id: string | number,
-  ): Promise<{ message: string }> => {
-    const res = await fetch(`${API_URL}/appointments/${id}`, {
-      method: "DELETE",
+    close_notes?: string,
+  ): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_URL}/appointments/${id}/cancel`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ close_notes }),
     });
     if (!res.ok) throw new Error("Error canceling appointment");
+    return res.json();
+  },
+
+  /** Finalizar reserva completa (solo si no tiene sesiones pendientes) */
+  completeAppointment: async (
+    id: string | number,
+  ): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_URL}/appointments/${id}/complete`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || "Error al finalizar la reserva");
+    }
+    return res.json();
+  },
+
+  /** Obtener ficha láser de una reserva */
+  getLaserRecord: async (
+    appointmentId: string | number,
+  ): Promise<LaserClinicalRecord> => {
+    const res = await fetch(
+      `${API_URL}/appointments/${appointmentId}/laser-record`,
+    );
+    if (!res.ok) throw new Error("Error fetching laser record");
+    return res.json();
+  },
+
+  /** Actualizar ficha láser */
+  updateLaserRecord: async (
+    appointmentId: string | number,
+    data: Partial<LaserClinicalRecord>,
+  ): Promise<{ ok: boolean }> => {
+    const res = await fetch(
+      `${API_URL}/appointments/${appointmentId}/laser-record`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
+    if (!res.ok) throw new Error("Error updating laser record");
     return res.json();
   },
 };

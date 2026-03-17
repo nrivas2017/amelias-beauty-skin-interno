@@ -1,21 +1,17 @@
 import morgan from "morgan";
-import logger from "../config/logger";
 import { Request, Response } from "express";
-
-const morganStream = {
-  write: (message: string) => {
-    logger.http(message.trimEnd());
-  },
-};
-
-const morganFormat =
-  ":method :url :status :res[content-length] bytes — :response-time ms";
+import logger from "../config/logger";
 
 const skipFn = (_req: Request, _res: Response) => {
   return process.env.NODE_ENV === "test";
 };
 
-export const httpLogger = morgan(morganFormat, {
-  stream: morganStream,
-  skip: skipFn,
-});
+export const httpLogger = morgan(
+  ":method :url :status :response-time ms - :res[content-length]",
+  {
+    skip: skipFn,
+    stream: {
+      write: (message: string) => logger.info(message.trim()),
+    },
+  }
+);

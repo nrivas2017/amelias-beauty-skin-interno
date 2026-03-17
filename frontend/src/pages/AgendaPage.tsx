@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale/es";
-import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
+import {
+  Calendar,
+  dateFnsLocalizer,
+  Views,
+  type View,
+} from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/calendar.css";
 import {
@@ -25,8 +31,20 @@ const localizer = dateFnsLocalizer({
 });
 
 const AgendaPage = () => {
+  const navigate = useNavigate();
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [currentView, setCurrentView] = useState<View>(Views.DAY);
+
+  const handleNavigate = (newDate: Date) => {
+    setCurrentDate(newDate);
+  };
+
+  const handleViewChange = (newView: View) => {
+    setCurrentView(newView);
+  };
 
   const { data: staffList = [] } = useQuery({
     queryKey: ["staff"],
@@ -55,6 +73,7 @@ const AgendaPage = () => {
       color: session.label_color || "#3b82f6",
       status: session.session_status,
       patient: session.patient_name,
+      appointment_id: session.appointment_id,
     }));
   }, [sessions]);
 
@@ -64,7 +83,13 @@ const AgendaPage = () => {
   };
 
   const handleSelectEvent = (event: any) => {
-    console.log("Evento seleccionado para editar o ver", event);
+    if (event.appointment_id && event.id) {
+      navigate(
+        `/reservations?appointment_id=${event.appointment_id}&session_id=${event.id}`,
+      );
+    } else {
+      console.log("Evento sin appointment_id", event);
+    }
   };
 
   const EventComponent = ({ event }: any) => {
@@ -110,11 +135,13 @@ const AgendaPage = () => {
         <Calendar
           localizer={localizer}
           events={myEventsList}
-          defaultView={Views.DAY}
+          view={currentView}
+          onView={handleViewChange}
+          date={currentDate}
+          onNavigate={handleNavigate}
           views={[Views.DAY, Views.WEEK]}
           step={15}
           timeslots={4}
-          defaultDate={new Date()}
           resources={resourceMap}
           resourceIdAccessor="resourceId"
           resourceTitleAccessor="resourceTitle"
@@ -141,6 +168,7 @@ const AgendaPage = () => {
             week: "Semana",
             day: "Día",
           }}
+          culture="es"
         />
       </div>
 

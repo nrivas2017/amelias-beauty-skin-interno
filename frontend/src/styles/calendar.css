@@ -28,6 +28,9 @@
 .rbc-event.rbc-selected {
   @apply ring-2 ring-blue-500 ring-offset-1 bg-transparent;
 }
+.rbc-event-label {
+  @apply text-slate-700 font-bold text-[10px] px-1 bg-white/60 rounded-sm w-fit mb-0.5 shadow-sm;
+}
 .rbc-current-time-indicator {
   @apply bg-red-400 h-[2px] shadow-sm before:content-[''] before:absolute before:w-2 before:h-2 before:bg-red-400 before:rounded-full before:-ml-1 before:-mt-[3px];
 }

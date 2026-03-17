@@ -5,7 +5,6 @@ import patientRoutes from "./patient.routes";
 import serviceRoutes from "./service.routes";
 import staffRoutes from "./staff.routes";
 import specialtyRoutes from "./specialty.routes";
-// import laserRoutes from "./laser.routes";
 
 const router = Router();
 
@@ -26,8 +25,5 @@ router.use("/staff", staffRoutes);
 
 // @route  /api/specialties
 router.use("/specialties", specialtyRoutes);
-
-// @route  /api/laser-records
-// router.use("/laser-records", laserRoutes);
 
 export default router;

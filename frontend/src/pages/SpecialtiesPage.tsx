@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
+import { showAlert } from "@/lib/alerts";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import type { Specialty, CreateSpecialtyDTO } from "@/services/types";
 
 const defaultFormData: CreateSpecialtyDTO = {
   name: "",
+  code: "",
   is_active: true,
 };
 
@@ -44,7 +46,7 @@ const SpecialtiesPage = () => {
       queryClient.invalidateQueries({ queryKey: ["specialties"] });
       closeModal();
     },
-    onError: (err: any) => alert(err.message),
+    onError: (err: any) => showAlert.error("Error al crear", err.message),
   });
 
   const updateMutation = useMutation({
@@ -59,7 +61,7 @@ const SpecialtiesPage = () => {
       queryClient.invalidateQueries({ queryKey: ["specialties"] });
       closeModal();
     },
-    onError: (err: any) => alert(err.message),
+    onError: (err: any) => showAlert.error("Error al actualizar", err.message),
   });
 
   const handleOpenCreate = () => {
@@ -72,6 +74,7 @@ const SpecialtiesPage = () => {
     setEditingId(specialty.id);
     setFormData({
       name: specialty.name,
+      code: specialty.code,
       is_active: Boolean(specialty.is_active),
     });
     setIsModalOpen(true);
@@ -85,7 +88,10 @@ const SpecialtiesPage = () => {
 
   const handleSave = () => {
     if (!formData.name.trim()) {
-      alert("El nombre de la especialidad es obligatorio");
+      showAlert.warning(
+        "Campos incompletos",
+        "El nombre de la especialidad es obligatorio",
+      );
       return;
     }
 

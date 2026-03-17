@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
+import { showAlert } from "@/lib/alerts";
 import {
   Dialog,
   DialogContent,
@@ -21,14 +22,10 @@ import {
 } from "@/components/ui/table";
 import type { Staff, Specialty } from "@/services/types";
 
-interface StaffWithSpecialties extends Staff {
-  specialties?: { id: number; name: string }[];
-}
-
 const defaultFormData = {
   full_name: "",
   is_active: true,
-  specialty_ids: [] as number[],
+  specialty_ids: [] as Array<number | string>,
 };
 
 const StaffPage = () => {
@@ -38,12 +35,12 @@ const StaffPage = () => {
 
   const [formData, setFormData] = useState(defaultFormData);
 
-  const { data: staffList = [], isLoading: isLoadingStaff } = useQuery<
-    StaffWithSpecialties[]
-  >({
-    queryKey: ["staff"],
-    queryFn: api.getStaff,
-  });
+  const { data: staffList = [], isLoading: isLoadingStaff } = useQuery<Staff[]>(
+    {
+      queryKey: ["staff"],
+      queryFn: api.getStaff,
+    },
+  );
 
   const { data: specialtiesList = [], isLoading: isLoadingSpecialties } =
     useQuery<Specialty[]>({
@@ -57,7 +54,7 @@ const StaffPage = () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       closeModal();
     },
-    onError: (err: any) => alert("Error al crear: " + err.message),
+    onError: (err: any) => showAlert.error("Error al crear", err.message),
   });
 
   const updateMutation = useMutation({
@@ -67,7 +64,7 @@ const StaffPage = () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       closeModal();
     },
-    onError: (err: any) => alert("Error al actualizar: " + err.message),
+    onError: (err: any) => showAlert.error("Error al actualizar", err.message),
   });
 
   const handleOpenCreate = () => {
@@ -76,7 +73,7 @@ const StaffPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (person: StaffWithSpecialties) => {
+  const handleOpenEdit = (person: Staff) => {
     setEditingId(person.id);
     setFormData({
       full_name: person.full_name,
@@ -96,7 +93,7 @@ const StaffPage = () => {
 
   const handleSave = () => {
     if (!formData.full_name.trim()) {
-      alert("El nombre es obligatorio");
+      showAlert.warning("Campos incompletos", "El nombre es obligatorio");
       return;
     }
 

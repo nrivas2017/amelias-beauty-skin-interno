@@ -2,6 +2,7 @@ import type { FunctionComponent } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Calendar,
+  ClipboardList,
   Users,
   BriefcaseMedical,
   Contact,
@@ -12,6 +13,7 @@ import { Outlet } from "react-router-dom";
 const MainLayout: FunctionComponent = () => {
   const navItems = [
     { name: "Agenda", to: "/", icon: Calendar },
+    { name: "Reservas", to: "/reservations", icon: ClipboardList },
     { name: "Pacientes", to: "/patients", icon: Contact },
     { name: "Servicios", to: "/services", icon: BriefcaseMedical },
     { name: "Especialidades", to: "/specialties", icon: GraduationCap },

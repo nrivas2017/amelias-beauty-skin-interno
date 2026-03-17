@@ -6,6 +6,7 @@ import ServicesPage from "./pages/ServicesPage";
 import PatientsPage from "./pages/PatientsPage";
 import StaffPage from "./pages/StaffPage";
 import SpecialtiesPage from "./pages/SpecialtiesPage";
+import ReservationsPage from "./pages/ReservationsPage";
 
 const App: FunctionComponent = () => {
   return (
@@ -13,6 +14,7 @@ const App: FunctionComponent = () => {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<AgendaPage />} />
+          <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/patients" element={<PatientsPage />} />
           <Route path="/specialties" element={<SpecialtiesPage />} />
