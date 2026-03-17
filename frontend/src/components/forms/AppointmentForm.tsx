@@ -11,6 +11,7 @@ import type {
   LaserClinicalRecord,
 } from "@/services/types";
 
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -410,41 +411,55 @@ export function AppointmentForm({
                     gap: 2,
                   }}
                 >
-                  <TextField
-                    type="datetime-local"
+                  <DateTimePicker
                     label="Inicio *"
-                    size="small"
-                    value={row.start_date_time}
-                    onChange={(e) => {
-                      updateRow(row._key, "start_date_time", e.target.value);
-                      if (
-                        row.end_date_time &&
-                        new Date(e.target.value) >= new Date(row.end_date_time)
-                      ) {
-                        const newEnd = addMinutes(new Date(e.target.value), 30);
-                        updateRow(
-                          row._key,
-                          "end_date_time",
-                          format(newEnd, "yyyy-MM-dd'T'HH:mm"),
-                        );
+                    value={
+                      row.start_date_time ? new Date(row.start_date_time) : null
+                    }
+                    onChange={(newValue) => {
+                      if (newValue) {
+                        const startStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
+                        updateRow(row._key, "start_date_time", startStr);
+                        if (
+                          row.end_date_time &&
+                          newValue >= new Date(row.end_date_time)
+                        ) {
+                          const newEnd = addMinutes(newValue, 30);
+                          updateRow(
+                            row._key,
+                            "end_date_time",
+                            format(newEnd, "yyyy-MM-dd'T'HH:mm"),
+                          );
+                        }
+                      } else {
+                        updateRow(row._key, "start_date_time", "");
                       }
                     }}
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ step: 300 }}
-                  />
-                  <TextField
-                    type="datetime-local"
-                    label="Fin *"
-                    size="small"
-                    value={row.end_date_time}
-                    onChange={(e) =>
-                      updateRow(row._key, "end_date_time", e.target.value)
-                    }
-                    disabled={!row.start_date_time}
-                    InputProps={{
-                      inputProps: { min: row.start_date_time, step: 300 },
+                    slotProps={{
+                      textField: { size: "small", fullWidth: true },
                     }}
-                    InputLabelProps={{ shrink: true }}
+                  />
+                  <DateTimePicker
+                    label="Fin *"
+                    value={
+                      row.end_date_time ? new Date(row.end_date_time) : null
+                    }
+                    onChange={(newValue) => {
+                      updateRow(
+                        row._key,
+                        "end_date_time",
+                        newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "",
+                      );
+                    }}
+                    disabled={!row.start_date_time}
+                    minDateTime={
+                      row.start_date_time
+                        ? new Date(row.start_date_time)
+                        : undefined
+                    }
+                    slotProps={{
+                      textField: { size: "small", fullWidth: true },
+                    }}
                   />
                 </Box>
 

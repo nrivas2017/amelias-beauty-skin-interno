@@ -126,6 +126,7 @@ const AgendaPage = () => {
         >
           <Typography
             variant="caption"
+            color="inherit"
             sx={{
               fontWeight: 600,
               opacity: 0.9,
@@ -155,6 +156,7 @@ const AgendaPage = () => {
 
         <Typography
           variant="caption"
+          color="inherit"
           fontWeight="bold"
           noWrap
           sx={{ lineHeight: 1.2 }}
@@ -163,6 +165,7 @@ const AgendaPage = () => {
         </Typography>
         <Typography
           variant="caption"
+          color="inherit"
           noWrap
           sx={{ opacity: 0.9, lineHeight: 1.2 }}
         >

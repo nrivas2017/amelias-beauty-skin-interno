@@ -6,6 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
 
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -341,32 +343,88 @@ function SessionModal({
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              type="datetime-local"
-              label="Nueva fecha y hora de inicio"
-              value={startDT}
-              onChange={(e) => {
-                setStartDT(e.target.value);
-                if (endDT && new Date(e.target.value) >= new Date(endDT)) {
-                  const newEnd = addMinutes(new Date(e.target.value), 30);
-                  setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+            <DateTimePicker
+              label={
+                mode === "reschedule"
+                  ? "Nueva fecha y hora de inicio"
+                  : "Inicio *"
+              }
+              value={startDT ? new Date(startDT) : null}
+              onChange={(newValue) => {
+                if (newValue) {
+                  setStartDT(format(newValue, "yyyy-MM-dd'T'HH:mm"));
+                  if (endDT && newValue >= new Date(endDT)) {
+                    const newEnd = addMinutes(newValue, 30);
+                    setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+                  }
+                } else {
+                  setStartDT("");
                 }
               }}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              size="small"
+              slotProps={{ textField: { size: "small", fullWidth: true } }}
             />
-            <TextField
-              type="datetime-local"
-              label="Nueva fecha y hora de fin"
-              value={endDT}
-              onChange={(e) => setEndDT(e.target.value)}
-              InputProps={{ inputProps: { min: startDT } }}
+            <DateTimePicker
+              label={
+                mode === "reschedule" ? "Nueva fecha y hora de fin" : "Fin *"
+              }
+              value={endDT ? new Date(endDT) : null}
+              onChange={(newValue) =>
+                setEndDT(newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "")
+              }
               disabled={!startDT}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              size="small"
+              minDateTime={startDT ? new Date(startDT) : undefined}
+              slotProps={{ textField: { size: "small", fullWidth: true } }}
             />
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+              }}
+            >
+              <DateTimePicker
+                label="Inicio *"
+                value={startDT ? new Date(startDT) : null}
+                disablePast
+                onChange={(newValue) => {
+                  if (newValue) {
+                    const startStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
+                    setStartDT(startStr);
+
+                    const currentEnd = endDT ? new Date(endDT) : null;
+                    if (!currentEnd || newValue >= currentEnd) {
+                      const duration = 30;
+                      const newEnd = addMinutes(newValue, duration);
+
+                      setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+                    }
+                  } else {
+                    setStartDT("");
+                  }
+                }}
+                slotProps={{
+                  textField: { size: "small", fullWidth: true },
+                }}
+              />
+
+              <DateTimePicker
+                label="Fin *"
+                value={endDT ? new Date(endDT) : null}
+                onChange={(newValue) => {
+                  setEndDT(
+                    newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "",
+                  );
+                }}
+                disabled={!startDT}
+                minDateTime={
+                  startDT ? addMinutes(new Date(startDT), 5) : undefined
+                }
+                slotProps={{
+                  textField: { size: "small", fullWidth: true },
+                }}
+              />
+            </Box>
             <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
               <Button variant="outlined" onClick={() => setMode("view")}>
                 Volver
@@ -925,23 +983,21 @@ const ReservationsPage = () => {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            type="date"
+          <DatePicker
             label="Desde"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            fullWidth
+            value={filterDateFrom ? parseISO(filterDateFrom) : null}
+            onChange={(newValue) =>
+              setFilterDateFrom(newValue ? format(newValue, "yyyy-MM-dd") : "")
+            }
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
           />
-          <TextField
-            type="date"
+          <DatePicker
             label="Hasta"
-            value={filterDateTo}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            size="small"
-            fullWidth
+            value={filterDateTo ? parseISO(filterDateTo) : null}
+            onChange={(newValue) =>
+              setFilterDateTo(newValue ? format(newValue, "yyyy-MM-dd") : "")
+            }
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
           />
         </Box>
         <Box
