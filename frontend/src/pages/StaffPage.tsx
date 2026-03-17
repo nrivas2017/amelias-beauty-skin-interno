@@ -1,26 +1,25 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { showAlert } from "@/lib/alerts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { Staff, Specialty } from "@/services/types";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
 
 const defaultFormData = {
   full_name: "",
@@ -120,182 +119,263 @@ const StaffPage = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: "full_name",
+        headerName: "Nombre",
+        flex: 1,
+        minWidth: 200,
+      },
+      {
+        field: "specialties",
+        headerName: "Especialidades",
+        flex: 2,
+        minWidth: 250,
+        sortable: false,
+        renderCell: (params) => {
+          const specialties = params.value as Specialty[];
+          if (!specialties || specialties.length === 0) {
+            return (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ display: "flex", alignItems: "center", height: "100%" }}
+              >
+                Sin especialidades
+              </Typography>
+            );
+          }
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 0.5,
+                alignItems: "center",
+                height: "100%",
+                py: 1,
+              }}
+            >
+              {specialties.map((sp) => (
+                <Chip
+                  key={sp.id}
+                  label={sp.name}
+                  size="small"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+          );
+        },
+      },
+      {
+        field: "is_active",
+        headerName: "Estado",
+        width: 130,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Chip
+              label={params.value ? "Activo" : "Inactivo"}
+              color={params.value ? "success" : "default"}
+              size="small"
+              sx={{ fontWeight: 500 }}
+            />
+          </Box>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Acciones",
+        width: 120,
+        sortable: false,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenEdit(params.row as Staff)}
+          >
+            Editar
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Personal</h1>
-          <p className="text-slate-500">Gestiona al equipo y sus datos.</p>
-        </div>
+    <Box
+      sx={{ display: "flex", flexDirection: "column", gap: 3, height: "100%" }}
+    >
+      {/* Cabecera */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            color="text.primary"
+            gutterBottom
+          >
+            Personal
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Gestiona al equipo y sus datos.
+          </Typography>
+        </Box>
         <Button
+          variant="contained"
+          color="primary"
           onClick={handleOpenCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          sx={{ boxShadow: 1 }}
         >
           + Nuevo Miembro
         </Button>
-      </div>
+      </Box>
 
-      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Especialidades</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoadingStaff ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  Cargando...
-                </TableCell>
-              </TableRow>
-            ) : staffList.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  No hay personal registrado.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staffList.map((person) => (
-                <TableRow key={person.id}>
-                  <TableCell className="font-medium">
-                    {person.full_name}
-                  </TableCell>
-                  <TableCell>
-                    {person.specialties && person.specialties.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {person.specialties.map((sp) => (
-                          <span
-                            key={sp.id}
-                            className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs border border-slate-200"
-                          >
-                            {sp.name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400">
-                        Sin especialidades
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {person.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        Activo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                        Inactivo
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEdit(person)}
-                    >
-                      Editar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tabla DataGrid */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 1,
+          overflow: "hidden",
+          minHeight: 400,
+        }}
+      >
+        <DataGrid
+          rows={staffList}
+          columns={columns}
+          loading={isLoadingStaff}
+          getRowHeight={() => "auto"}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 10 } },
+          }}
+          pageSizeOptions={[10, 25, 50]}
+          disableRowSelectionOnClick
+          sx={{
+            border: 0,
+            "& .MuiDataGrid-cell": { py: 1 },
+          }}
+        />
+      </Box>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Editar Personal" : "Agregar Nuevo Personal"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label>Nombre completo *</Label>
-              <Input
-                value={formData.full_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, full_name: e.target.value })
-                }
-                placeholder="Ej: María José Sandoval"
-              />
-            </div>
+      {/* Modal / Dialogo de Creación/Edición */}
+      <Dialog open={isModalOpen} onClose={closeModal} fullWidth maxWidth="sm">
+        <DialogTitle fontWeight="bold">
+          {editingId ? "Editar Personal" : "Agregar Nuevo Personal"}
+        </DialogTitle>
+        <Divider />
 
-            <div className="space-y-3">
-              <Label>Especialidades</Label>
-              {isLoadingSpecialties ? (
-                <p className="text-sm text-slate-500">
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}
+        >
+          <TextField
+            label="Nombre completo *"
+            variant="outlined"
+            fullWidth
+            value={formData.full_name}
+            onChange={(e) =>
+              setFormData({ ...formData, full_name: e.target.value })
+            }
+            placeholder="Ej: María José Sandoval"
+          />
+
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Especialidades
+            </Typography>
+            {isLoadingSpecialties ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CircularProgress size={16} />
+                <Typography variant="body2" color="text.secondary">
                   Cargando especialidades...
-                </p>
-              ) : specialtiesList.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No hay especialidades registradas en el sistema.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 bg-slate-50 max-h-48 overflow-y-auto">
-                  {specialtiesList.map((sp) => {
-                    const spId =
-                      typeof sp.id === "string" ? parseInt(sp.id) : sp.id;
-                    const isChecked = formData.specialty_ids.includes(spId);
+                </Typography>
+              </Box>
+            ) : specialtiesList.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No hay especialidades registradas en el sistema.
+              </Typography>
+            ) : (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 1,
+                  bgcolor: "grey.50",
+                  p: 2,
+                  borderRadius: 1,
+                  border: 1,
+                  borderColor: "grey.200",
+                  maxHeight: 200,
+                  overflowY: "auto",
+                }}
+              >
+                {specialtiesList.map((sp) => {
+                  const spId =
+                    typeof sp.id === "string" ? parseInt(sp.id) : sp.id;
+                  const isChecked = formData.specialty_ids.includes(spId);
 
-                    return (
-                      <div key={spId} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`specialty-${spId}`}
+                  return (
+                    <FormControlLabel
+                      key={spId}
+                      control={
+                        <Checkbox
                           checked={isChecked}
                           onChange={() => toggleSpecialty(spId)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                          color="primary"
                         />
-                        <Label
-                          htmlFor={`specialty-${spId}`}
-                          className="cursor-pointer text-sm font-normal"
-                        >
-                          {sp.name}
-                        </Label>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      }
+                      label={<Typography variant="body2">{sp.name}</Typography>}
+                    />
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
 
-            <div className="flex items-center space-x-2 pt-2 border-t">
-              <input
-                type="checkbox"
-                id="is_active_checkbox"
+          <Divider />
+
+          <FormControlLabel
+            control={
+              <Checkbox
                 checked={formData.is_active}
                 onChange={(e) =>
                   setFormData({ ...formData, is_active: e.target.checked })
                 }
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                color="primary"
               />
-              <Label htmlFor="is_active_checkbox" className="cursor-pointer">
-                ¿Personal se encuentra activo?
-              </Label>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={closeModal}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
+            }
+            label="¿Personal se encuentra activo?"
+          />
         </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeModal} variant="outlined" color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="contained"
+            color="primary"
+            disableElevation
+          >
+            {isSaving ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 };
 

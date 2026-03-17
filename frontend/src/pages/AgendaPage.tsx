@@ -10,17 +10,17 @@ import {
 } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/calendar.css";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { AppointmentForm } from "@/components/forms/AppointmentForm";
+import CloseIcon from "@mui/icons-material/Close";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
 
 const localizer = dateFnsLocalizer({
   format,
@@ -93,45 +93,139 @@ const AgendaPage = () => {
   };
 
   const EventComponent = ({ event }: any) => {
+    const startTime = format(event.start, "HH:mm");
+    const endTime = format(event.end, "HH:mm");
+
     return (
-      <div
-        className="h-full flex flex-col p-2 text-xs rounded-md shadow-sm border border-black/5 transition-all hover:brightness-110 focus:outline-none"
-        style={{ backgroundColor: event.color, color: "white" }}
+      <Box
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          p: 0.5,
+          fontSize: "0.75rem",
+          borderRadius: 1,
+          boxShadow: 1,
+          backgroundColor: event.color,
+          color: "white",
+          border: "1px solid rgba(0,0,0,0.05)",
+          transition: "filter 0.2s",
+          "&:hover": {
+            filter: "brightness(1.1)",
+            cursor: "pointer",
+          },
+        }}
       >
-        <div className="font-bold truncate text-sm">{event.patient}</div>
-        <div className="truncate opacity-90">{event.title}</div>
-        <div className="mt-auto flex justify-between items-end">
-          <span className="bg-black/20 px-1.5 py-0.5 rounded-sm text-[10px] uppercase font-semibold">
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 0.5,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+              opacity: 0.9,
+              lineHeight: 1,
+              fontSize: "0.65rem",
+            }}
+          >
+            {startTime} - {endTime}
+          </Typography>
+
+          <Box
+            component="span"
+            sx={{
+              bgcolor: "rgba(0,0,0,0.2)",
+              px: 0.75,
+              py: 0.25,
+              borderRadius: 0.5,
+              fontSize: "0.6rem",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              lineHeight: 1,
+            }}
+          >
             {event.status}
-          </span>
-        </div>
-      </div>
+          </Box>
+        </Box>
+
+        <Typography
+          variant="caption"
+          fontWeight="bold"
+          noWrap
+          sx={{ lineHeight: 1.2 }}
+        >
+          {event.patient}
+        </Typography>
+        <Typography
+          variant="caption"
+          noWrap
+          sx={{ opacity: 0.9, lineHeight: 1.2 }}
+        >
+          {event.title}
+        </Typography>
+      </Box>
     );
   };
 
   return (
-    <div className="space-y-4 flex flex-col h-full bg-slate-50/50">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800">
+    <Box
+      sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}
+    >
+      {/* Cabecera */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            color="text.primary"
+            gutterBottom
+          >
             Agenda Diaria
-          </h1>
-          <p className="text-slate-500">
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             Gestiona las citas del día por especialistas.
-          </p>
-        </div>
+          </Typography>
+        </Box>
         <Button
+          variant="contained"
+          color="primary"
           onClick={() => {
             setSelectedSlot(null);
             setIsDrawerOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+          sx={{ boxShadow: 1 }}
         >
           + Nueva Cita
         </Button>
-      </div>
+      </Box>
 
-      <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      {/* Contenedor del Calendario */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          bgcolor: "background.paper",
+          p: 2,
+          borderRadius: 2,
+          boxShadow: 1,
+          border: 1,
+          borderColor: "grey.200",
+          height: "calc(100vh - 160px)",
+          minHeight: 500,
+        }}
+      >
         <Calendar
           localizer={localizer}
           events={myEventsList}
@@ -148,8 +242,8 @@ const AgendaPage = () => {
           selectable
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
-          min={new Date(new Date().setHours(8, 0, 0, 0))}
-          max={new Date(new Date().setHours(21, 0, 0, 0))}
+          min={new Date(new Date().setHours(7, 0, 0, 0))}
+          max={new Date(new Date().setHours(22, 0, 0, 0))}
           components={{
             event: EventComponent,
           }}
@@ -170,26 +264,55 @@ const AgendaPage = () => {
           }}
           culture="es"
         />
-      </div>
+      </Box>
 
-      <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="sm:max-w-2xl overflow-y-auto w-full md:w-3/4">
-          <SheetHeader>
-            <SheetTitle>Gestión de Cita</SheetTitle>
-            <SheetDescription>
-              Reserva una hora o completa la ficha clínica del paciente.
-            </SheetDescription>
-          </SheetHeader>
+      <Drawer
+        anchor="right"
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      >
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: 600, md: 700 },
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box>
+              <Typography variant="h5" fontWeight="bold">
+                Gestión de Cita
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Reserva una hora o completa la ficha clínica del paciente.
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setIsDrawerOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-          <AppointmentForm
-            selectedSlot={selectedSlot}
-            onClose={() => setIsDrawerOpen(false)}
-            existingSessions={sessions}
-            staffList={staffList}
-          />
-        </SheetContent>
-      </Sheet>
-    </div>
+          <Divider />
+
+          <Box sx={{ flexGrow: 1, overflowY: "auto", px: 1 }}>
+            <AppointmentForm
+              selectedSlot={selectedSlot}
+              onClose={() => setIsDrawerOpen(false)}
+              existingSessions={sessions}
+              staffList={staffList}
+            />
+          </Box>
+        </Box>
+      </Drawer>
+    </Box>
   );
 };
 

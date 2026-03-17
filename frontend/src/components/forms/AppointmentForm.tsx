@@ -3,9 +3,6 @@ import { format, addMinutes } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { LaserClinicalForm } from "@/components/forms/LaserClinicalForm";
 import type {
   CreateSessionDTO,
@@ -13,6 +10,20 @@ import type {
   Staff,
   LaserClinicalRecord,
 } from "@/services/types";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Stepper from "@mui/material/Stepper";
+import Step from "@mui/material/Step";
+import StepLabel from "@mui/material/StepLabel";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
+import Alert from "@mui/material/Alert";
+import Chip from "@mui/material/Chip";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const SPECIALTY_LASER = "LASER_DEPILATION";
 
@@ -41,8 +52,8 @@ export function AppointmentForm({
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>(1);
 
-  const [patientId, setPatientId] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [patientId, setPatientId] = useState<string | number>("");
+  const [serviceId, setServiceId] = useState<string | number>("");
 
   const [sessionRows, setSessionRows] = useState<SessionRow[]>([
     {
@@ -147,7 +158,10 @@ export function AppointmentForm({
 
   const goStep2 = () => {
     if (!patientId || !serviceId) {
-      showAlert.warning("Campos incompletos", "Por favor selecciona un paciente y un servicio.");
+      showAlert.warning(
+        "Campos incompletos",
+        "Por favor selecciona un paciente y un servicio.",
+      );
       return;
     }
     setStep(2);
@@ -158,7 +172,10 @@ export function AppointmentForm({
       (r) => !r.staff_id || !r.start_date_time || !r.end_date_time,
     );
     if (invalid) {
-      showAlert.warning("Sesiones incompletas", "Completa todos los campos de las sesiones (especialista, inicio y fin).");
+      showAlert.warning(
+        "Sesiones incompletas",
+        "Completa todos los campos de las sesiones (especialista, inicio y fin).",
+      );
       return;
     }
 
@@ -167,7 +184,10 @@ export function AppointmentForm({
       const prevStart = new Date(sessionRows[i - 1].start_date_time);
       const currStart = new Date(sessionRows[i].start_date_time);
       if (currStart < prevStart) {
-        showAlert.warning("Error de orden cronológico", `La sesión ${i + 1} no puede comenzar antes que la sesión ${i}. Las sesiones deben estar en orden cronológico ascendente.`);
+        showAlert.warning(
+          "Error de orden cronológico",
+          `La sesión ${i + 1} no puede comenzar antes que la sesión ${i}. Las sesiones deben estar en orden cronológico ascendente.`,
+        );
         return;
       }
     }
@@ -207,159 +227,193 @@ export function AppointmentForm({
     createMutation.mutate(payload);
   };
 
+  const steps = isLaser
+    ? ["Datos", "Sesiones", "Ficha Láser"]
+    : ["Datos", "Sesiones"];
+
   return (
-    <div className="mt-6 space-y-6">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        {[
-          { n: 1, label: "Datos" },
-          { n: 2, label: "Sesiones" },
-          ...(isLaser ? [{ n: 3, label: "Ficha Láser" }] : []),
-        ].map(({ n, label }, idx, arr) => (
-          <span key={n} className="flex items-center gap-2">
-            <span
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                step === n
-                  ? "bg-blue-600 text-white"
-                  : step > n
-                    ? "bg-green-500 text-white"
-                    : "bg-slate-200 text-slate-500"
-              }`}
-            >
-              {step > n ? "✓" : n}
-            </span>
-            <span className={step === n ? "text-blue-700" : "text-slate-400"}>
-              {label}
-            </span>
-            {idx < arr.length - 1 && <span className="text-slate-300">›</span>}
-          </span>
+    <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 4 }}>
+      {/* ── Indicador de Pasos (Stepper) ─────────────────────────────── */}
+      <Stepper activeStep={step - 1} alternativeLabel>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
         ))}
-      </div>
+      </Stepper>
 
       {/* ── Paso 1: Paciente y Servicio ────────────────────────────────── */}
       {step === 1 && (
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <Label className="text-slate-700">Paciente *</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value)}
-            >
-              <option value="">Selecciona un paciente...</option>
-              {patients.map((p: any) => (
-                <option key={p.id} value={p.id}>
-                  {p.full_name} — {p.phone}
-                </option>
-              ))}
-            </select>
-          </div>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <TextField
+            select
+            label="Paciente *"
+            value={patientId}
+            onChange={(e) => setPatientId(e.target.value)}
+            fullWidth
+            variant="outlined"
+          >
+            <MenuItem value="">
+              <em>Selecciona un paciente...</em>
+            </MenuItem>
+            {patients.map((p: any) => (
+              <MenuItem key={p.id} value={p.id}>
+                {p.full_name} — {p.phone}
+              </MenuItem>
+            ))}
+          </TextField>
 
-          <div className="space-y-2">
-            <Label className="text-slate-700">Servicio *</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
+          <Box>
+            <TextField
+              select
+              label="Servicio *"
               value={serviceId}
               onChange={(e) => setServiceId(e.target.value)}
+              fullWidth
+              variant="outlined"
             >
-              <option value="">Selecciona un servicio...</option>
+              <MenuItem value="">
+                <em>Selecciona un servicio...</em>
+              </MenuItem>
               {servicesList.map((s: any) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.specialty_name ? ` — ${s.specialty_name}` : ""}
-                </option>
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name} {s.specialty_name ? ` — ${s.specialty_name}` : ""}
+                </MenuItem>
               ))}
-            </select>
+            </TextField>
             {selectedService && (
-              <p className="text-xs text-slate-400 pt-1">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  mt: 1,
+                  px: 1,
+                }}
+              >
                 Especialidad:{" "}
-                <span className="font-semibold text-slate-600">
+                <Box component="span" fontWeight="bold" color="text.primary">
                   {selectedService.specialty_name ?? "Sin especialidad"}
-                </span>
+                </Box>
                 {isLaser && (
-                  <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase">
-                    Requiere ficha láser
-                  </span>
+                  <Chip
+                    size="small"
+                    label="Requiere ficha láser"
+                    color="secondary"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: "0.65rem" }}
+                  />
                 )}
-              </p>
+              </Typography>
             )}
-          </div>
+          </Box>
 
-          <div className="space-y-2">
-            <Label className="text-slate-700">Notas generales</Label>
-            <textarea
-              className="flex min-h-[70px] w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-sm"
-              placeholder="Observaciones generales de la reserva..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+          <TextField
+            label="Notas generales"
+            multiline
+            rows={3}
+            placeholder="Observaciones generales de la reserva..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            fullWidth
+            variant="outlined"
+          />
 
-          <div className="pt-4 border-t border-slate-100 flex gap-2 justify-end">
-            <Button variant="outline" onClick={onClose}>
+          <Divider />
+
+          <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
+            <Button variant="outlined" onClick={onClose} color="inherit">
               Cancelar
             </Button>
             <Button
+              variant="contained"
               onClick={goStep2}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              color="primary"
+              disableElevation
             >
-              Siguiente →
+              Siguiente
             </Button>
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
 
       {/* ── Paso 2: Sesiones ───────────────────────────────────────────── */}
       {step === 2 && (
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <Typography variant="body2" color="text.secondary">
             Agrega una o más sesiones para esta reserva. Puedes agregar el resto
             de las sesiones más adelante desde el módulo de Reservas.
-          </p>
+          </Typography>
 
-          {sessionRows.map((row, idx) => (
-            <div
-              key={row._key}
-              className="border border-slate-200 rounded-lg p-4 space-y-3 bg-slate-50"
-            >
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-semibold text-slate-700">
-                  Sesión #{idx + 1}
-                </span>
-                {sessionRows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeSessionRow(row._key)}
-                    className="text-red-400 hover:text-red-600 text-xs"
-                  >
-                    Eliminar
-                  </button>
-                )}
-              </div>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {sessionRows.map((row, idx) => (
+              <Box
+                key={row._key}
+                sx={{
+                  border: 1,
+                  borderColor: "grey.300",
+                  borderRadius: 2,
+                  p: 2.5,
+                  bgcolor: "grey.50",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight="bold">
+                    Sesión #{idx + 1}
+                  </Typography>
+                  {sessionRows.length > 1 && (
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => removeSessionRow(row._key)}
+                    >
+                      <DeleteIcon fontSize="medium" />
+                    </IconButton>
+                  )}
+                </Box>
 
-              <div className="space-y-1">
-                <Label className="text-slate-600 text-xs">Especialista *</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-white px-3 text-sm"
-                  value={String(row.staff_id)}
+                <TextField
+                  select
+                  label="Especialista *"
+                  size="small"
+                  value={row.staff_id}
                   onChange={(e) =>
                     updateRow(row._key, "staff_id", e.target.value)
                   }
+                  fullWidth
                 >
-                  <option value="">Seleccionar...</option>
+                  <MenuItem value="">
+                    <em>Seleccionar...</em>
+                  </MenuItem>
                   {staffList.map((st) => (
-                    <option key={st.id} value={st.id}>
+                    <MenuItem key={st.id} value={st.id}>
                       {st.full_name}
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
+                </TextField>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-slate-600 text-xs">Inicio *</Label>
-                  <Input
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 2,
+                  }}
+                >
+                  <TextField
                     type="datetime-local"
-                    className="bg-white text-sm h-9"
+                    label="Inicio *"
+                    size="small"
                     value={row.start_date_time}
                     onChange={(e) => {
                       updateRow(row._key, "start_date_time", e.target.value);
@@ -375,31 +429,29 @@ export function AppointmentForm({
                         );
                       }
                     }}
-                    step={300}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ step: 300 }}
                   />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-slate-600 text-xs">Fin *</Label>
-                  <Input
+                  <TextField
                     type="datetime-local"
-                    className="bg-white text-sm h-9"
+                    label="Fin *"
+                    size="small"
                     value={row.end_date_time}
                     onChange={(e) =>
                       updateRow(row._key, "end_date_time", e.target.value)
                     }
-                    min={row.start_date_time}
                     disabled={!row.start_date_time}
-                    step={300}
+                    InputProps={{
+                      inputProps: { min: row.start_date_time, step: 300 },
+                    }}
+                    InputLabelProps={{ shrink: true }}
                   />
-                </div>
-              </div>
+                </Box>
 
-              <div className="space-y-1">
-                <Label className="text-slate-600 text-xs">
-                  Duración estimada (referencia)
-                </Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-white px-3 text-sm"
+                <TextField
+                  select
+                  label="Duración estimada (referencia)"
+                  size="small"
                   value={row.estimated_duration_minutes}
                   onChange={(e) =>
                     updateRow(
@@ -408,58 +460,75 @@ export function AppointmentForm({
                       Number(e.target.value),
                     )
                   }
+                  fullWidth
                 >
                   {DURATION_OPTIONS.map((d) => (
-                    <option key={d} value={d}>
+                    <MenuItem key={d} value={d}>
                       {d} minutos
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
+                </TextField>
 
-              {/* Alerta de conflicto de horario de staff */}
-              {row.staff_id &&
-                row.start_date_time &&
-                row.end_date_time &&
-                checkConflict(
-                  row.staff_id,
-                  row.start_date_time,
-                  row.end_date_time,
-                ) && (
-                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                    ⚠️ Este especialista tiene otra sesión en ese horario.
-                  </p>
-                )}
+                {/* Alerta de conflicto de horario de staff */}
+                {row.staff_id &&
+                  row.start_date_time &&
+                  row.end_date_time &&
+                  checkConflict(
+                    row.staff_id,
+                    row.start_date_time,
+                    row.end_date_time,
+                  ) && (
+                    <Alert
+                      severity="warning"
+                      sx={{ py: 0, "& .MuiAlert-message": { py: 1 } }}
+                    >
+                      Este especialista tiene otra sesión en ese horario.
+                    </Alert>
+                  )}
 
-              {/* Alerta de orden cronológico */}
-              {idx > 0 &&
-                row.start_date_time &&
-                sessionRows[idx - 1].start_date_time &&
-                new Date(row.start_date_time) <
-                  new Date(sessionRows[idx - 1].start_date_time) && (
-                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
-                    ❌ Esta sesión no puede comenzar antes que la sesión #{idx}.
-                  </p>
-                )}
-            </div>
-          ))}
+                {/* Alerta de orden cronológico */}
+                {idx > 0 &&
+                  row.start_date_time &&
+                  sessionRows[idx - 1].start_date_time &&
+                  new Date(row.start_date_time) <
+                    new Date(sessionRows[idx - 1].start_date_time) && (
+                    <Alert
+                      severity="error"
+                      sx={{ py: 0, "& .MuiAlert-message": { py: 1 } }}
+                    >
+                      Esta sesión no puede comenzar antes que la sesión #{idx}.
+                    </Alert>
+                  )}
+              </Box>
+            ))}
 
-          <button
-            type="button"
-            onClick={addSessionRow}
-            className="w-full text-sm text-blue-600 border border-blue-200 border-dashed rounded-lg py-2 hover:bg-blue-50 transition"
+            <Button
+              variant="outlined"
+              onClick={addSessionRow}
+              sx={{ borderStyle: "dashed", borderWidth: 2, mt: 1 }}
+            >
+              + Agregar otra sesión
+            </Button>
+          </Box>
+
+          <Divider />
+
+          <Box
+            sx={{ display: "flex", gap: 2, justifyContent: "space-between" }}
           >
-            + Agregar otra sesión
-          </button>
-
-          <div className="pt-4 border-t border-slate-100 flex gap-2 justify-between">
-            <Button variant="outline" onClick={() => setStep(1)}>
-              ← Atrás
+            <Button
+              variant="outlined"
+              onClick={() => setStep(1)}
+              color="inherit"
+            >
+              Atrás
             </Button>
             <Button
+              variant="contained"
               onClick={goStep3OrSave}
               disabled={createMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              color="primary"
+              disableElevation
             >
               {createMutation.isPending
                 ? "Guardando..."
@@ -467,13 +536,13 @@ export function AppointmentForm({
                   ? "Siguiente → Ficha Láser"
                   : "Guardar Reserva"}
             </Button>
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
 
       {/* ── Paso 3: Ficha Láser (solo si aplica) ──────────────────────── */}
       {step === 3 && isLaser && (
-        <div className="space-y-4">
+        <Box>
           <LaserClinicalForm
             onSubmitData={(data) => {
               setLaserData(data);
@@ -482,8 +551,8 @@ export function AppointmentForm({
             onBack={() => setStep(2)}
             isSaving={createMutation.isPending}
           />
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }

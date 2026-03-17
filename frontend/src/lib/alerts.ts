@@ -1,74 +1,86 @@
-import Swal from 'sweetalert2'
+import Swal from "sweetalert2";
 
-const swalWithTailwindButtons = Swal.mixin({
-  customClass: {
-    confirmButton: 'bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-md font-medium mx-2 transition-colors',
-    cancelButton: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-md font-medium mx-2 transition-colors',
-    popup: 'rounded-xl shadow-xl border border-gray-100',
-    title: 'text-gray-900 font-semibold',
-    htmlContainer: 'text-gray-600'
-  },
-  buttonsStyling: false
-})
+const MUI_PRIMARY = "#1976d2";
+const MUI_ERROR = "#d32f2f";
+const MUI_CANCEL = "#9e9e9e";
+
+const swalMuiStyle = Swal.mixin({
+  confirmButtonColor: MUI_PRIMARY,
+  cancelButtonColor: MUI_CANCEL,
+  padding: "1.5rem",
+});
 
 export const showAlert = {
   success: (title: string, text?: string) => {
-    return swalWithTailwindButtons.fire({
-      icon: 'success',
+    return swalMuiStyle.fire({
+      icon: "success",
       title,
       text,
       timer: 3000,
       timerProgressBar: true,
       showConfirmButton: false,
-    })
+    });
   },
   error: (title: string, text?: string) => {
-    return swalWithTailwindButtons.fire({
-      icon: 'error',
+    return swalMuiStyle.fire({
+      icon: "error",
       title,
       text,
-      confirmButtonText: 'Entendido',
-    })
+      confirmButtonText: "Entendido",
+      confirmButtonColor: MUI_ERROR,
+    });
   },
   warning: (title: string, text?: string) => {
-    return swalWithTailwindButtons.fire({
-      icon: 'warning',
+    return swalMuiStyle.fire({
+      icon: "warning",
       title,
       text,
-      confirmButtonText: 'Aceptar',
-    })
+      confirmButtonText: "Aceptar",
+      confirmButtonColor: MUI_PRIMARY,
+    });
   },
   info: (title: string, text?: string) => {
-    return swalWithTailwindButtons.fire({
-      icon: 'info',
+    return swalMuiStyle.fire({
+      icon: "info",
       title,
       text,
-      confirmButtonText: 'Aceptar',
-    })
+      confirmButtonText: "Aceptar",
+    });
   },
-  confirm: async (title: string, text: string, confirmText = 'Sí, continuar', cancelText = 'Cancelar') => {
-    const result = await swalWithTailwindButtons.fire({
+  confirm: async (
+    title: string,
+    text: string,
+    confirmText = "Sí, continuar",
+    cancelText = "Cancelar",
+  ) => {
+    const result = await swalMuiStyle.fire({
       title,
       text,
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
       confirmButtonText: confirmText,
       cancelButtonText: cancelText,
       reverseButtons: true,
-    })
-    return result.isConfirmed
+    });
+    return result.isConfirmed;
   },
-  prompt: async (title: string, text: string, placeholder = '', confirmText = 'Aceptar', cancelText = 'Cancelar') => {
-    const result = await swalWithTailwindButtons.fire({
+  prompt: async (
+    title: string,
+    text: string,
+    placeholder = "",
+    confirmText = "Aceptar",
+    cancelText = "Cancelar",
+  ) => {
+    const result = await swalMuiStyle.fire({
       title,
       text,
-      input: 'text',
+      input: "text",
       inputPlaceholder: placeholder,
       showCancelButton: true,
       confirmButtonText: confirmText,
       cancelButtonText: cancelText,
       reverseButtons: true,
-    })
-    return result.isDismissed ? null : (result.value || '')
-  }
-}
+    });
+    return result.isDismissed ? null : result.value || "";
+  },
+};

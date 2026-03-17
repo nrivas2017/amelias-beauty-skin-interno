@@ -1,33 +1,26 @@
-import { useState, type FunctionComponent } from "react";
+import { useState, useMemo, type FunctionComponent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { showAlert } from "@/lib/alerts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { CreatePatientDTO, Patient } from "@/services/types";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Drawer from "@mui/material/Drawer";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
 
 const defaultFormData: CreatePatientDTO = {
   full_name: "",
@@ -113,7 +106,10 @@ const PatientsPage: FunctionComponent = () => {
 
   const handleSave = () => {
     if (!formData.full_name.trim() || !formData.phone.trim()) {
-      showAlert.warning("Campos incompletos", "El nombre completo y el teléfono son obligatorios.");
+      showAlert.warning(
+        "Campos incompletos",
+        "El nombre completo y el teléfono son obligatorios.",
+      );
       return;
     }
 
@@ -126,195 +122,301 @@ const PatientsPage: FunctionComponent = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: "full_name",
+        headerName: "Nombre",
+        flex: 1.2,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2" fontWeight={500}>
+              {params.row.full_name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {params.row.age} años
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "contact",
+        headerName: "Contacto",
+        flex: 1,
+        minWidth: 180,
+        sortable: false,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2">{params.row.phone}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {params.row.email || "Sin email"}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: "medical_info",
+        headerName: "Alergias / Tratamientos",
+        flex: 1.5,
+        minWidth: 250,
+        sortable: false,
+        renderCell: (params) => {
+          const p = params.row as Patient;
+          const hasWarning = p.pregnant_lactating || p.medical_treatment;
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                height: "100%",
+                py: 1,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                {p.allergies
+                  ? `Alergias: ${p.allergies}`
+                  : "Sin alergias conocidas"}
+              </Typography>
+              {hasWarning && (
+                <Typography
+                  variant="caption"
+                  color="warning.dark"
+                  fontWeight="bold"
+                  sx={{ mt: 0.5 }}
+                >
+                  ⚠️ Atención especial requerida
+                </Typography>
+              )}
+            </Box>
+          );
+        },
+      },
+      {
+        field: "actions",
+        headerName: "Acciones",
+        width: 180,
+        sortable: false,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => handleOpenEdit(params.row as Patient)}
+            >
+              Editar
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => handleViewFicha(params.row as Patient)}
+            >
+              Ver Ficha
+            </Button>
+          </Box>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
-          <p className="text-slate-500">
+    <Box
+      sx={{ display: "flex", flexDirection: "column", gap: 3, height: "100%" }}
+    >
+      {/* Cabecera */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            color="text.primary"
+            gutterBottom
+          >
+            Pacientes
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             Gestiona la información y el historial clínico de los pacientes.
-          </p>
-        </div>
+          </Typography>
+        </Box>
         <Button
+          variant="contained"
+          color="primary"
           onClick={handleOpenCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          sx={{ boxShadow: 1 }}
         >
           + Nuevo Paciente
         </Button>
-      </div>
+      </Box>
 
-      <div className="border rounded-lg bg-white shadow-sm overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Contacto</TableHead>
-              <TableHead>Alergias / Tratamientos</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-6">
-                  Cargando...
-                </TableCell>
-              </TableRow>
-            ) : patients.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-6">
-                  No hay pacientes registrados.
-                </TableCell>
-              </TableRow>
-            ) : (
-              patients.map((patient: Patient) => (
-                <TableRow key={patient.id}>
-                  <TableCell className="font-medium">
-                    {patient.full_name}
-                    <div className="text-xs text-slate-500">
-                      {patient.age} años
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{patient.phone}</div>
-                    <div className="text-xs text-slate-500">
-                      {patient.email || "Sin email"}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-xs text-slate-600">
-                      {patient.allergies
-                        ? `Alergias: ${patient.allergies}`
-                        : "Sin alergias conocidas"}
-                    </div>
-                    {(patient.pregnant_lactating ||
-                      patient.medical_treatment) && (
-                      <div className="text-xs text-amber-600 mt-1 font-medium">
-                        ⚠️ Atención especial requerida
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEdit(patient)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewFicha(patient)}
-                    >
-                      Ver Ficha
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tabla DataGrid */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 1,
+          overflow: "hidden",
+          minHeight: 400,
+        }}
+      >
+        <DataGrid
+          rows={patients}
+          columns={columns}
+          loading={isLoading}
+          getRowHeight={() => "auto"}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 10 } },
+          }}
+          pageSizeOptions={[10, 25, 50]}
+          disableRowSelectionOnClick
+          sx={{
+            border: 0,
+            "& .MuiDataGrid-cell": { py: 1 },
+          }}
+        />
+      </Box>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Editar Paciente" : "Registrar Nuevo Paciente"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Nombre Completo *</Label>
-              <Input
-                value={formData.full_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, full_name: e.target.value })
-                }
-                placeholder="Ej: Ana Gabriela Silva"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Edad</Label>
-              <Input
-                type="number"
-                value={formData.age || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    age: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Teléfono *</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="+56 9 1234 5678"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="correo@ejemplo.com"
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Dirección</Label>
-              <Input
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                placeholder="Calle, Número, Comuna"
-              />
-            </div>
+      {/* Modal / Dialogo de Creación/Edición */}
+      <Dialog open={isModalOpen} onClose={closeModal} fullWidth maxWidth="md">
+        <DialogTitle fontWeight="bold">
+          {editingId ? "Editar Paciente" : "Registrar Nuevo Paciente"}
+        </DialogTitle>
+        <Divider />
 
-            <div className="col-span-2 mt-2 pt-4 border-t">
-              <h4 className="text-sm font-semibold mb-3">
+        <DialogContent>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 3,
+              pt: 1,
+            }}
+          >
+            <TextField
+              label="Nombre Completo *"
+              variant="outlined"
+              fullWidth
+              value={formData.full_name}
+              onChange={(e) =>
+                setFormData({ ...formData, full_name: e.target.value })
+              }
+              placeholder="Ej: Ana Gabriela Silva"
+            />
+            <TextField
+              label="Edad"
+              variant="outlined"
+              type="number"
+              fullWidth
+              value={formData.age || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, age: parseInt(e.target.value) || 0 })
+              }
+            />
+            <TextField
+              label="Teléfono *"
+              variant="outlined"
+              fullWidth
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              placeholder="+56 9 1234 5678"
+            />
+            <TextField
+              label="Email"
+              variant="outlined"
+              type="email"
+              fullWidth
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder="correo@ejemplo.com"
+            />
+            <TextField
+              label="Dirección"
+              variant="outlined"
+              fullWidth
+              sx={{ gridColumn: { sm: "span 2" } }}
+              value={formData.address}
+              onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })
+              }
+              placeholder="Calle, Número, Comuna"
+            />
+
+            <Box sx={{ gridColumn: { sm: "span 2" }, mt: 2 }}>
+              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                 Información Médica Básica
-              </h4>
-            </div>
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
 
-            <div className="space-y-2 col-span-2 flex flex-col justify-center">
-              <Label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.pregnant_lactating}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pregnant_lactating: e.target.checked,
-                    })
-                  }
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                />
-                ¿Está embarazada o en periodo de lactancia?
-              </Label>
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Alergias Conocidas</Label>
-              <Input
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.pregnant_lactating}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pregnant_lactating: e.target.checked,
+                      })
+                    }
+                    color="primary"
+                  />
+                }
+                label="¿Está embarazada o en periodo de lactancia?"
+                sx={{ mb: 2 }}
+              />
+
+              <TextField
+                label="Alergias Conocidas"
+                variant="outlined"
+                fullWidth
+                sx={{ mb: 3 }}
                 value={formData.allergies}
                 onChange={(e) =>
                   setFormData({ ...formData, allergies: e.target.value })
                 }
                 placeholder="Ej: Alergia al látex, penicilina..."
               />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Tratamientos Médicos Actuales</Label>
-              <Input
+
+              <TextField
+                label="Tratamientos Médicos Actuales"
+                variant="outlined"
+                fullWidth
                 value={formData.medical_treatment}
                 onChange={(e) =>
                   setFormData({
@@ -324,96 +426,203 @@ const PatientsPage: FunctionComponent = () => {
                 }
                 placeholder="Ej: Tratamiento para la tiroides..."
               />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeModal}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Guardando..." : "Guardar Paciente"}
-            </Button>
-          </DialogFooter>
+            </Box>
+          </Box>
         </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeModal} variant="outlined" color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="contained"
+            color="primary"
+            disableElevation
+          >
+            {isSaving ? "Guardando..." : "Guardar Paciente"}
+          </Button>
+        </DialogActions>
       </Dialog>
 
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader className="mb-6">
-            <SheetTitle className="text-2xl">
-              {selectedPatient?.full_name}
-            </SheetTitle>
-            <SheetDescription>
-              Ficha Clínica e Información de Contacto
-            </SheetDescription>
-          </SheetHeader>
+      {/* Drawer (Reemplazo del Sheet lateral para ver la Ficha) */}
+      <Drawer
+        anchor="right"
+        open={isSheetOpen}
+        onClose={() => setIsSheetOpen(false)}
+      >
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: 450 },
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Box>
+              <Typography variant="h5" fontWeight="bold" gutterBottom>
+                {selectedPatient?.full_name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Ficha Clínica e Información de Contacto
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setIsSheetOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Divider />
 
           {selectedPatient && (
-            <div className="space-y-6 text-sm">
-              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                <h4 className="font-semibold text-slate-900 mb-2">
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {/* Datos de Contacto */}
+              <Box
+                sx={{
+                  bgcolor: "grey.50",
+                  p: 2,
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "grey.200",
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                   Datos de Contacto
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-slate-600">
-                  <div className="font-medium text-slate-900">Teléfono:</div>
-                  <div>{selectedPatient.phone}</div>
-                  <div className="font-medium text-slate-900">Email:</div>
-                  <div>{selectedPatient.email || "-"}</div>
-                  <div className="font-medium text-slate-900">Edad:</div>
-                  <div>{selectedPatient.age} años</div>
-                  <div className="font-medium text-slate-900">Dirección:</div>
-                  <div>{selectedPatient.address || "-"}</div>
-                </div>
-              </div>
+                </Typography>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 2fr",
+                    gap: 1,
+                    mt: 1,
+                  }}
+                >
+                  <Typography variant="body2" fontWeight="medium">
+                    Teléfono:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedPatient.phone}
+                  </Typography>
 
-              <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
-                <h4 className="font-semibold text-amber-900 mb-2">
+                  <Typography variant="body2" fontWeight="medium">
+                    Email:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedPatient.email || "-"}
+                  </Typography>
+
+                  <Typography variant="body2" fontWeight="medium">
+                    Edad:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedPatient.age} años
+                  </Typography>
+
+                  <Typography variant="body2" fontWeight="medium">
+                    Dirección:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedPatient.address || "-"}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Alertas Médicas */}
+              <Box
+                sx={{
+                  bgcolor: "warning.50",
+                  p: 2,
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: "warning.200",
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  fontWeight="bold"
+                  color="warning.900"
+                  gutterBottom
+                >
                   Alertas Médicas
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <span className="font-medium text-amber-900 block">
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                    mt: 1,
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight="medium"
+                      color="warning.900"
+                    >
                       Condición Especial:
-                    </span>
-                    <span className="text-amber-800">
+                    </Typography>
+                    <Typography variant="body2" color="warning.800">
                       {selectedPatient.pregnant_lactating
                         ? "Embarazada / Lactando"
                         : "Ninguna reportada"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-amber-900 block">
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight="medium"
+                      color="warning.900"
+                    >
                       Alergias:
-                    </span>
-                    <span className="text-amber-800">
+                    </Typography>
+                    <Typography variant="body2" color="warning.800">
                       {selectedPatient.allergies || "Ninguna reportada"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-amber-900 block">
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight="medium"
+                      color="warning.900"
+                    >
                       Tratamientos Actuales:
-                    </span>
-                    <span className="text-amber-800">
+                    </Typography>
+                    <Typography variant="body2" color="warning.800">
                       {selectedPatient.medical_treatment || "Ninguno reportado"}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
 
-              <div className="pt-4 border-t">
-                <h4 className="font-semibold text-slate-900 mb-2">
+              {/* Historial de Citas (Próximamente) */}
+              <Box>
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                   Historial de Citas
-                </h4>
-                <p className="text-slate-500 italic">
+                </Typography>
+                <Divider sx={{ mb: 1 }} />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  fontStyle="italic"
+                >
                   Próximamente: Aquí se listarán las sesiones de depilación,
                   masajes, etc. agendadas para este paciente.
-                </p>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
           )}
-        </SheetContent>
-      </Sheet>
-    </div>
+        </Box>
+      </Drawer>
+    </Box>
   );
 };
 

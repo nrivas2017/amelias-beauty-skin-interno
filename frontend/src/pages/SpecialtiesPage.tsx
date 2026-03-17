@@ -1,26 +1,24 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { showAlert } from "@/lib/alerts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type { Specialty, CreateSpecialtyDTO } from "@/services/types";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
 
 const defaultFormData: CreateSpecialtyDTO = {
   name: "",
@@ -104,123 +102,162 @@ const SpecialtiesPage = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: "name",
+        headerName: "Nombre",
+        flex: 1,
+        minWidth: 250,
+      },
+      {
+        field: "is_active",
+        headerName: "Estado",
+        width: 150,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Chip
+              label={params.value ? "Activo" : "Inactivo"}
+              color={params.value ? "success" : "default"}
+              size="small"
+              sx={{ fontWeight: 500 }}
+            />
+          </Box>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Acciones",
+        width: 120,
+        sortable: false,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => handleOpenEdit(params.row as Specialty)}
+          >
+            Editar
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Especialidades</h1>
-          <p className="text-slate-500">
+    <Box
+      sx={{ display: "flex", flexDirection: "column", gap: 3, height: "100%" }}
+    >
+      {/* Cabecera */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            color="text.primary"
+            gutterBottom
+          >
+            Especialidades
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             Gestiona las áreas de especialización del personal.
-          </p>
-        </div>
+          </Typography>
+        </Box>
         <Button
+          variant="contained"
+          color="primary"
           onClick={handleOpenCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          sx={{ boxShadow: 1 }}
         >
           + Nueva Especialidad
         </Button>
-      </div>
+      </Box>
 
-      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-4">
-                  Cargando...
-                </TableCell>
-              </TableRow>
-            ) : specialtiesList.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-4">
-                  No hay especialidades registradas.
-                </TableCell>
-              </TableRow>
-            ) : (
-              specialtiesList.map((sp) => (
-                <TableRow key={sp.id}>
-                  <TableCell className="font-medium">{sp.name}</TableCell>
-                  <TableCell>
-                    {sp.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        Activo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                        Inactivo
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenEdit(sp)}
-                    >
-                      Editar
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tabla DataGrid */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 1,
+          overflow: "hidden",
+          minHeight: 400,
+        }}
+      >
+        <DataGrid
+          rows={specialtiesList}
+          columns={columns}
+          loading={isLoading}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 10 } },
+          }}
+          pageSizeOptions={[10, 25, 50]}
+          disableRowSelectionOnClick
+          sx={{ border: 0 }}
+        />
+      </Box>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Editar Especialidad" : "Agregar Nueva Especialidad"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nombre de la especialidad *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Ej: Depilación Láser, Masoterapia"
-              />
-            </div>
+      {/* Modal / Dialogo de Creación/Edición */}
+      <Dialog open={isModalOpen} onClose={closeModal} fullWidth maxWidth="sm">
+        <DialogTitle fontWeight="bold">
+          {editingId ? "Editar Especialidad" : "Agregar Nueva Especialidad"}
+        </DialogTitle>
+        <Divider />
 
-            <div className="flex items-center space-x-2 pt-2">
-              <input
-                type="checkbox"
-                id="is_active_checkbox"
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}
+        >
+          <TextField
+            label="Nombre de la especialidad *"
+            variant="outlined"
+            fullWidth
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Ej: Depilación Láser, Masoterapia"
+          />
+
+          <Divider />
+
+          <FormControlLabel
+            control={
+              <Checkbox
                 checked={formData.is_active}
                 onChange={(e) =>
                   setFormData({ ...formData, is_active: e.target.checked })
                 }
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                color="primary"
               />
-              <Label htmlFor="is_active_checkbox" className="cursor-pointer">
-                ¿Especialidad activa?
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeModal}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Guardando..." : "Guardar"}
-            </Button>
-          </DialogFooter>
+            }
+            label="¿Especialidad activa?"
+          />
         </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeModal} variant="outlined" color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="contained"
+            color="primary"
+            disableElevation
+          >
+            {isSaving ? "Guardando..." : "Guardar"}
+          </Button>
+        </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 };
 

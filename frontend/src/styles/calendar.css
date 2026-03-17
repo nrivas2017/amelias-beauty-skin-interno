@@ -1,45 +1,104 @@
 .rbc-calendar {
-  @apply font-sans;
+  font-family: inherit;
 }
+
 .rbc-time-header {
-  @apply bg-slate-50 border-b-slate-200 py-2;
+  background-color: #f8fafc;
+  border-bottom-color: #e2e8f0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
+
 .rbc-header {
-  @apply font-medium text-slate-700 border-none py-2 text-sm uppercase tracking-wider;
+  font-weight: 500;
+  color: #334155;
+  border: none;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
+
 .rbc-time-view {
-  @apply border-slate-200 rounded-lg overflow-hidden;
+  border-color: #e2e8f0;
+  border-radius: 0.5rem;
+  overflow: hidden;
 }
+
 .rbc-time-content {
-  @apply border-t-0;
+  border-top-width: 0px;
 }
+
 .rbc-timeslot-group {
-  @apply border-b-slate-200 min-h-[60px] transition-colors;
+  border-bottom-color: #e2e8f0;
+  min-height: 120px;
+  transition-property: color, background-color, border-color, fill, stroke;
+  transition-duration: 150ms;
 }
+
 .rbc-day-slot .rbc-time-slot {
-  @apply border-t-slate-50;
+  border-top-color: #f8fafc;
 }
+
 .rbc-day-slot .rbc-time-slot:hover {
-  @apply bg-blue-50/50 cursor-pointer;
+  background-color: rgba(239, 246, 255, 0.5);
+  cursor: pointer;
 }
+
 .rbc-event {
-  @apply bg-transparent outline-none ring-0 shadow-none hover:bg-transparent focus:outline-none p-0;
+  background-color: transparent;
+  outline: none;
+  box-shadow: none;
+  padding: 0;
 }
+
+.rbc-event:hover {
+  background-color: transparent;
+}
+
+.rbc-event:focus {
+  outline: none;
+}
+
 .rbc-event.rbc-selected {
-  @apply ring-2 ring-blue-500 ring-offset-1 bg-transparent;
+  background-color: transparent;
+  box-shadow:
+    0 0 0 1px #ffffff,
+    0 0 0 3px #3b82f6;
 }
+
 .rbc-event-label {
-  @apply text-slate-700 font-bold text-[10px] px-1 bg-white/60 rounded-sm w-fit mb-0.5 shadow-sm;
+  display: none;
 }
+
 .rbc-current-time-indicator {
-  @apply bg-red-400 h-[2px] shadow-sm before:content-[''] before:absolute before:w-2 before:h-2 before:bg-red-400 before:rounded-full before:-ml-1 before:-mt-[3px];
+  background-color: #f87171;
+  height: 2px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  z-index: 3;
+  pointer-events: none;
 }
+
+.rbc-current-time-indicator::before {
+  content: "";
+  position: absolute;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #f87171;
+  border-radius: 9999px;
+  margin-left: -0.25rem;
+  margin-top: -3px;
+}
+
 .rbc-allday-cell {
-  @apply hidden; /* Hide all-day row for clinic setting */
+  display: none;
 }
+
 .rbc-time-header-content {
-  @apply border-l-slate-200;
+  border-left-color: #e2e8f0;
 }
+
 .rbc-day-bg {
-  @apply border-l-slate-200;
+  border-left-color: #e2e8f0;
 }

@@ -1,8 +1,13 @@
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { LaserClinicalRecord } from "@/services/types";
+
+// MUI Core Imports
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import Divider from "@mui/material/Divider";
+import Chip from "@mui/material/Chip";
 
 type LaserFormData = {
   tattoos_zone: string;
@@ -113,73 +118,139 @@ export function LaserClinicalForm({
   };
 
   return (
-    <form
+    <Box
+      component="form"
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-8 bg-white p-6 rounded-xl border border-slate-200"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        bgcolor: "background.paper",
+        p: 3,
+        borderRadius: 2,
+        border: 1,
+        borderColor: "grey.200",
+      }}
     >
       {/* Sección 1: Antecedentes clínicos */}
-      <div>
-        <h3 className="text-base font-semibold border-b pb-2 mb-4 text-slate-800">
+      <Box>
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
           1. Antecedentes Clínicos (Contraindicaciones)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Enfermedades a la Piel / Otras (Ca, HTA, Epilepsia)
-            </Label>
-            <Input {...register("skin_diseases")} placeholder="Ej: Ninguna" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Medicamentos Fotosensibles actuales
-            </Label>
-            <Input
-              {...register("photosensitive_meds")}
-              placeholder="Ej: Isotretinoína"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Tatuajes (Indicar zona)</Label>
-            <Input
-              {...register("tattoos_zone")}
-              placeholder="Ej: Brazo derecho"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Implantes / Injertos (Indicar zona)
-            </Label>
-            <Input {...register("implants_zone")} placeholder="Ninguno" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Placas / Prótesis / Marcapasos</Label>
-            <Input
-              {...register("plates_prosthesis_zone")}
-              placeholder="Ninguno"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Nevus Atípico (Indicar zona)</Label>
-            <Input {...register("atypical_nevus_zone")} placeholder="Ninguno" />
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <Label className="text-xs">Método de depilación actual</Label>
-            <Input
-              {...register("current_hair_removal_method")}
-              placeholder="Ej: Máquina de afeitar, Cera"
-            />
-          </div>
-        </div>
-      </div>
+        </Typography>
+        <Divider sx={{ mb: 3 }} />
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: 2,
+          }}
+        >
+          <TextField
+            label="Enfermedades a la Piel / Otras (Ca, HTA, Epilepsia)"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ej: Ninguna"
+            {...register("skin_diseases")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Medicamentos Fotosensibles actuales"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ej: Isotretinoína"
+            {...register("photosensitive_meds")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Tatuajes (Indicar zona)"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ej: Brazo derecho"
+            {...register("tattoos_zone")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Implantes / Injertos (Indicar zona)"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ninguno"
+            {...register("implants_zone")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Placas / Prótesis / Marcapasos"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ninguno"
+            {...register("plates_prosthesis_zone")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Nevus Atípico (Indicar zona)"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ninguno"
+            {...register("atypical_nevus_zone")}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Método de depilación actual"
+            variant="outlined"
+            size="small"
+            fullWidth
+            placeholder="Ej: Máquina de afeitar, Cera"
+            {...register("current_hair_removal_method")}
+            InputLabelProps={{ shrink: true }}
+            sx={{ gridColumn: { md: "span 2" } }}
+          />
+        </Box>
+      </Box>
 
       {/* Sección 2: Test Fitzpatrick */}
-      <div className="bg-slate-50 p-5 rounded-xl border border-blue-100">
-        <h3 className="text-base font-semibold border-b border-blue-200 pb-2 mb-4 text-slate-800 flex justify-between">
-          <span>2. Test Fototipo de Fitzpatrick</span>
-          <span className="text-blue-600">Puntaje: {totalScore}</span>
-        </h3>
+      <Box
+        sx={{
+          bgcolor: "grey.50",
+          p: 3,
+          borderRadius: 2,
+          border: 1,
+          borderColor: "info.light",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 1,
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold">
+            2. Test Fototipo de Fitzpatrick
+          </Typography>
+          <Typography
+            variant="subtitle1"
+            fontWeight="bold"
+            color="primary.main"
+          >
+            Puntaje: {totalScore}
+          </Typography>
+        </Box>
+        <Divider sx={{ mb: 3 }} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: 3,
+          }}
+        >
           {[
             {
               label: "1. Color de Ojos",
@@ -259,51 +330,93 @@ export function LaserClinicalForm({
               ],
             },
           ].map(({ label, field, options }) => (
-            <div key={field} className="space-y-1">
-              <Label className="text-xs">{label}</Label>
-              <select
-                {...register(field as keyof LaserFormData)}
-                className="w-full flex h-9 rounded-md border border-input bg-white px-3 text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                {options.map((opt, i) => (
-                  <option key={i} value={i}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <TextField
+              key={field}
+              select
+              label={label}
+              size="small"
+              fullWidth
+              SelectProps={{ native: true }} // Usa el select nativo para integrarse limpio con register()
+              {...register(field as keyof LaserFormData)}
+            >
+              {options.map((opt, i) => (
+                <option key={i} value={i}>
+                  {opt}
+                </option>
+              ))}
+            </TextField>
           ))}
-        </div>
+        </Box>
 
-        <div className="mt-5 p-4 bg-blue-600 text-white rounded-lg flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
-          <div>
-            <h4 className="text-xs uppercase tracking-wider text-blue-200 font-semibold mb-1">
+        {/* Banner de Resultado */}
+        <Box
+          sx={{
+            mt: 4,
+            p: 2,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            alignItems: { xs: "flex-start", md: "center" },
+            justifyContent: "space-between",
+            gap: 2,
+            boxShadow: 2,
+          }}
+        >
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{ opacity: 0.8, fontWeight: "bold", letterSpacing: 1 }}
+            >
               Resultado
-            </h4>
-            <p className="font-medium">Fototipo {fitzpatrickLabel}</p>
-          </div>
-          {(totalScore <= 7 || totalScore >= 35) && (
-            <div className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full font-bold text-xs uppercase tracking-wider">
-              ⚠️ Revisar parámetros máquina
-            </div>
-          )}
-        </div>
-      </div>
+            </Typography>
+            <Typography variant="subtitle1" fontWeight="medium">
+              Fototipo {fitzpatrickLabel}
+            </Typography>
+          </Box>
 
-      <div className="flex justify-between pt-2">
+          {(totalScore <= 7 || totalScore >= 35) && (
+            <Chip
+              label="⚠️ Revisar parámetros máquina"
+              color="warning"
+              sx={{
+                fontWeight: "bold",
+                bgcolor: "warning.main",
+                color: "warning.contrastText",
+              }}
+            />
+          )}
+        </Box>
+      </Box>
+
+      {/* Botonera inferior */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", pt: 1 }}>
         {onBack && (
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button
+            type="button"
+            variant="outlined"
+            color="inherit"
+            onClick={onBack}
+          >
             ← Atrás
           </Button>
         )}
         <Button
           type="submit"
+          variant="contained"
           disabled={isSaving}
-          className="bg-slate-900 text-white px-8 ml-auto"
+          sx={{
+            ml: "auto",
+            px: 4,
+            bgcolor: "grey.900",
+            "&:hover": { bgcolor: "black" },
+          }}
+          disableElevation
         >
           {isSaving ? "Guardando..." : "Guardar Reserva con Ficha"}
         </Button>
-      </div>
-    </form>
+      </Box>
+    </Box>
   );
 }

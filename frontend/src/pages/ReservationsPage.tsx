@@ -1,20 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { format, parseISO, addMinutes } from "date-fns";
 import { es } from "date-fns/locale/es";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Drawer from "@mui/material/Drawer";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+
+import { DataGrid } from "@mui/x-data-grid";
+import type { GridColDef } from "@mui/x-data-grid";
+
 import type {
   Appointment,
   AppointmentFilters,
@@ -36,19 +41,40 @@ const fmtDate = (dt: string) => {
   }
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  "En tratamiento": "bg-blue-100 text-blue-700",
-  Finalizada: "bg-green-100 text-green-700",
-  Cancelada: "bg-red-100 text-red-700",
+const getStatusColor = (
+  statusName: string,
+): "info" | "success" | "error" | "default" => {
+  switch (statusName) {
+    case "En tratamiento":
+      return "info";
+    case "Finalizada":
+      return "success";
+    case "Cancelada":
+      return "error";
+    default:
+      return "default";
+  }
 };
 
-const SESSION_STATUS_COLORS: Record<string, string> = {
-  Agendada: "bg-sky-100 text-sky-700",
-  Confirmada: "bg-indigo-100 text-indigo-700",
-  Realizada: "bg-green-100 text-green-700",
-  "Cancelada por paciente": "bg-rose-100 text-rose-700",
-  "Cancelada por profesional": "bg-orange-100 text-orange-700",
-  Finalizada: "bg-emerald-100 text-emerald-700",
+const getSessionStatusColor = (
+  status: string,
+): "info" | "primary" | "success" | "error" | "warning" | "default" => {
+  switch (status) {
+    case "Agendada":
+      return "info";
+    case "Confirmada":
+      return "primary";
+    case "Realizada":
+      return "success";
+    case "Cancelada por paciente":
+      return "error";
+    case "Cancelada por profesional":
+      return "warning";
+    case "Finalizada":
+      return "success";
+    default:
+      return "default";
+  }
 };
 
 interface SessionModalProps {
@@ -100,7 +126,6 @@ function SessionModal({
   const handleOpen = () => {
     if (!session) return;
     setMode("view");
-    // Date inputs require YYYY-MM-DDTHH:mm format
     setStartDT(format(parseISO(session.start_date_time), "yyyy-MM-dd'T'HH:mm"));
     setEndDT(format(parseISO(session.end_date_time), "yyyy-MM-dd'T'HH:mm"));
     setStaffId(String(session.staff_id));
@@ -123,7 +148,8 @@ function SessionModal({
 
   const saveClose = () => {
     const statusId = sessionStatuses.find((s) => s.code === closeStatus)?.id;
-    if (!statusId) return showAlert.error("Error", "Estado de sesión no encontrado");
+    if (!statusId)
+      return showAlert.error("Error", "Estado de sesión no encontrado");
 
     updateMutation.mutate({
       status_id: statusId,
@@ -134,220 +160,274 @@ function SessionModal({
   if (!session) return null;
 
   return (
-    <Sheet
+    <Drawer
+      anchor="right"
       open={open}
-      onOpenChange={(v) => {
-        if (!v) onClose();
-        else handleOpen();
-      }}
+      onClose={onClose}
+      SlideProps={{ onEnter: handleOpen }}
     >
-      <SheetContent className="sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Sesión #{session.session_number}</SheetTitle>
-          <SheetDescription>
-            {session.service_name} — {session.patient_name}
-          </SheetDescription>
-        </SheetHeader>
+      <Box
+        sx={{
+          width: { xs: "100vw", sm: 400 },
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight="bold">
+              Sesión #{session.session_number}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {session.service_name} — {session.patient_name}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <div className="mt-6 space-y-4">
-          {mode === "view" && (
-            <>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Estado</dt>
-                  <dd>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${SESSION_STATUS_COLORS[session.session_status] ?? "bg-slate-100 text-slate-600"}`}
-                    >
-                      {session.session_status}
-                    </span>
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Especialista</dt>
-                  <dd className="font-medium">{session.staff_name}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Inicio</dt>
-                  <dd className="font-medium">
-                    {fmtDate(session.start_date_time)}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Fin</dt>
-                  <dd className="font-medium">
-                    {fmtDate(session.end_date_time)}
-                  </dd>
-                </div>
-                {session.estimated_duration_minutes && (
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Duración est.</dt>
-                    <dd>{session.estimated_duration_minutes} min</dd>
-                  </div>
-                )}
-                {session.notes && (
-                  <div>
-                    <dt className="text-slate-500 mb-1">Notas</dt>
-                    <dd className="text-slate-700 bg-slate-50 rounded p-2 text-xs">
-                      {session.notes}
-                    </dd>
-                  </div>
-                )}
-                {session.close_notes && (
-                  <div>
-                    <dt className="text-slate-500 mb-1">Nota de cierre</dt>
-                    <dd className="text-slate-700 bg-amber-50 rounded p-2 text-xs">
-                      {session.close_notes}
-                    </dd>
-                  </div>
-                )}
-              </dl>
+        <Divider />
 
-              {![
-                "Realizada",
-                "Finalizada",
-                "Cancelada por paciente",
-                "Cancelada por profesional",
-              ].includes(session.session_status) && (
-                <div className="pt-2 flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setMode("reschedule")}
-                  >
-                    📅 Reagendar sesión
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-green-300 text-green-700 hover:bg-green-50"
-                    onClick={() => {
-                      setCloseStatus(SessionStatusCodes.FINALIZED);
-                      setMode("close");
-                    }}
-                  >
-                    ✅ Finalizar sesión
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-red-300 text-red-600 hover:bg-red-50"
-                    disabled={deleteMutation.isPending}
-                    onClick={async () => {
-                      if (await showAlert.confirm("Eliminar sesión", "¿Estás seguro de que deseas eliminar esta sesión? Esta acción no se puede deshacer.", "Eliminar")) {
-                        deleteMutation.mutate(session.id);
-                      }
-                    }}
-                  >
-                    🗑️ Eliminar sesión
-                  </Button>
-                </div>
+        {mode === "view" && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 1 }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Estado
+              </Typography>
+              <Box>
+                <Chip
+                  size="small"
+                  label={session.session_status}
+                  color={getSessionStatusColor(session.session_status)}
+                />
+              </Box>
+
+              <Typography variant="body2" color="text.secondary">
+                Especialista
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {session.staff_name}
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                Inicio
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {fmtDate(session.start_date_time)}
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                Fin
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {fmtDate(session.end_date_time)}
+              </Typography>
+
+              {session.estimated_duration_minutes && (
+                <>
+                  <Typography variant="body2" color="text.secondary">
+                    Duración est.
+                  </Typography>
+                  <Typography variant="body2">
+                    {session.estimated_duration_minutes} min
+                  </Typography>
+                </>
               )}
-            </>
-          )}
+            </Box>
 
-          {mode === "reschedule" && (
-            <div className="space-y-4">
-              <h4 className="font-semibold text-slate-700">Reagendar sesión</h4>
-              <div className="space-y-1">
-                <Label className="text-xs">Especialista</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-                  value={staffId}
-                  onChange={(e) => setStaffId(e.target.value)}
+            {session.notes && (
+              <Box sx={{ bgcolor: "grey.50", p: 1.5, borderRadius: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  gutterBottom
                 >
-                  {staffList.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {st.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Nueva fecha y hora de inicio</Label>
-                <Input
-                  type="datetime-local"
-                  value={startDT}
-                  onChange={(e) => {
-                    setStartDT(e.target.value);
-                    if (endDT && new Date(e.target.value) >= new Date(endDT)) {
-                       const newEnd = addMinutes(new Date(e.target.value), 30);
-                       setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+                  Notas
+                </Typography>
+                <Typography variant="body2">{session.notes}</Typography>
+              </Box>
+            )}
+
+            {session.close_notes && (
+              <Box sx={{ bgcolor: "warning.50", p: 1.5, borderRadius: 1 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  gutterBottom
+                >
+                  Nota de cierre
+                </Typography>
+                <Typography variant="body2">{session.close_notes}</Typography>
+              </Box>
+            )}
+
+            {![
+              "Realizada",
+              "Finalizada",
+              "Cancelada por paciente",
+              "Cancelada por profesional",
+            ].includes(session.session_status) && (
+              <Box
+                sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 2 }}
+              >
+                <Button
+                  variant="outlined"
+                  onClick={() => setMode("reschedule")}
+                >
+                  📅 Reagendar sesión
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  onClick={() => {
+                    setCloseStatus(SessionStatusCodes.FINALIZED);
+                    setMode("close");
+                  }}
+                >
+                  ✅ Finalizar sesión
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  disabled={deleteMutation.isPending}
+                  onClick={async () => {
+                    if (
+                      await showAlert.confirm(
+                        "Eliminar sesión",
+                        "¿Estás seguro de que deseas eliminar esta sesión? Esta acción no se puede deshacer.",
+                        "Eliminar",
+                      )
+                    ) {
+                      deleteMutation.mutate(session.id);
                     }
                   }}
-                  className="bg-slate-50"
-                  step={300}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Nueva fecha y hora de fin</Label>
-                <Input
-                  type="datetime-local"
-                  value={endDT}
-                  onChange={(e) => setEndDT(e.target.value)}
-                  min={startDT}
-                  disabled={!startDT}
-                  className="bg-slate-50"
-                  step={300}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setMode("view")}>
-                  ← Volver
-                </Button>
-                <Button
-                  className="flex-1 bg-blue-600 text-white"
-                  disabled={updateMutation.isPending}
-                  onClick={saveReschedule}
                 >
-                  {updateMutation.isPending
-                    ? "Guardando..."
-                    : "Guardar horario"}
+                  🗑️ Eliminar sesión
                 </Button>
-              </div>
-            </div>
-          )}
+              </Box>
+            )}
+          </Box>
+        )}
 
-          {mode === "close" && (
-            <div className="space-y-4">
-              <h4 className="font-semibold text-slate-700">
-                {closeStatus === SessionStatusCodes.FINALIZED
-                  ? "Finalizar sesión"
-                  : "Cancelar sesión"}
-              </h4>
-              <div className="space-y-1">
-                <Label className="text-xs">
-                  Comentarios{" "}
-                  {closeStatus === SessionStatusCodes.FINALIZED
-                    ? "de finalización"
-                    : "de cancelación"}
-                </Label>
-                <textarea
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-sm"
-                  placeholder="Ej: Sesión completada sin inconvenientes..."
-                  value={closeNotes}
-                  onChange={(e) => setCloseNotes(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setMode("view")}>
-                  ← Volver
-                </Button>
-                <Button
-                  className={`flex-1 text-white ${closeStatus === SessionStatusCodes.FINALIZED ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-                  disabled={updateMutation.isPending}
-                  onClick={saveClose}
-                >
-                  {updateMutation.isPending
-                    ? "Guardando..."
-                    : closeStatus === SessionStatusCodes.FINALIZED
-                      ? "Confirmar finalización"
-                      : "Confirmar cancelación"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+        {mode === "reschedule" && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              Reagendar sesión
+            </Typography>
+            <TextField
+              select
+              label="Especialista"
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+              fullWidth
+              size="small"
+            >
+              {staffList.map((st) => (
+                <MenuItem key={st.id} value={st.id}>
+                  {st.full_name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              type="datetime-local"
+              label="Nueva fecha y hora de inicio"
+              value={startDT}
+              onChange={(e) => {
+                setStartDT(e.target.value);
+                if (endDT && new Date(e.target.value) >= new Date(endDT)) {
+                  const newEnd = addMinutes(new Date(e.target.value), 30);
+                  setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+                }
+              }}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              type="datetime-local"
+              label="Nueva fecha y hora de fin"
+              value={endDT}
+              onChange={(e) => setEndDT(e.target.value)}
+              InputProps={{ inputProps: { min: startDT } }}
+              disabled={!startDT}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+            <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+              <Button variant="outlined" onClick={() => setMode("view")}>
+                Volver
+              </Button>
+              <Button
+                variant="contained"
+                disabled={updateMutation.isPending}
+                onClick={saveReschedule}
+                sx={{ flex: 1 }}
+              >
+                {updateMutation.isPending ? "Guardando..." : "Guardar horario"}
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {mode === "close" && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography variant="subtitle2" fontWeight="bold">
+              {closeStatus === SessionStatusCodes.FINALIZED
+                ? "Finalizar sesión"
+                : "Cancelar sesión"}
+            </Typography>
+            <TextField
+              multiline
+              rows={3}
+              label={
+                closeStatus === SessionStatusCodes.FINALIZED
+                  ? "Comentarios de finalización"
+                  : "Comentarios de cancelación"
+              }
+              value={closeNotes}
+              onChange={(e) => setCloseNotes(e.target.value)}
+              fullWidth
+            />
+            <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+              <Button variant="outlined" onClick={() => setMode("view")}>
+                Volver
+              </Button>
+              <Button
+                variant="contained"
+                color={
+                  closeStatus === SessionStatusCodes.FINALIZED
+                    ? "success"
+                    : "error"
+                }
+                disabled={updateMutation.isPending}
+                onClick={saveClose}
+                sx={{ flex: 1 }}
+              >
+                {updateMutation.isPending
+                  ? "Guardando..."
+                  : closeStatus === SessionStatusCodes.FINALIZED
+                    ? "Confirmar finalización"
+                    : "Confirmar cancelación"}
+              </Button>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </Drawer>
   );
 }
 
@@ -398,98 +478,115 @@ function AddSessionModal({
   if (!appointment) return null;
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
-      <SheetContent className="sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Nueva Sesión</SheetTitle>
-          <SheetDescription>
-            {appointment.service_name} — {appointment.patient_name}
-          </SheetDescription>
-        </SheetHeader>
+    <Drawer anchor="right" open={open} onClose={onClose}>
+      <Box
+        sx={{
+          width: { xs: "100vw", sm: 400 },
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Box>
+            <Typography variant="h6" fontWeight="bold">
+              Nueva Sesión
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {appointment.service_name} — {appointment.patient_name}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <div className="mt-6 space-y-4">
-          <div className="space-y-1">
-            <Label className="text-xs">Especialista *</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-              value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
-            >
-              <option value="">Seleccionar...</option>
-              {staffList.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Inicio *</Label>
-            <Input
-              type="datetime-local"
-              value={startDT}
-              onChange={(e) => {
-                 setStartDT(e.target.value);
-                 if (endDT && new Date(e.target.value) >= new Date(endDT)) {
-                    const newEnd = addMinutes(new Date(e.target.value), 30);
-                    setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
-                 }
-              }}
-              className="bg-slate-50"
-              step={300}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Fin *</Label>
-            <Input
-              type="datetime-local"
-              value={endDT}
-              onChange={(e) => setEndDT(e.target.value)}
-              min={startDT}
-              disabled={!startDT}
-              className="bg-slate-50"
-              step={300}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Duración estimada (referencia)</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-            >
-              {DURATION_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} minutos
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Notas</Label>
-            <textarea
-              className="flex min-h-[60px] w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-sm"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-          <div className="pt-2">
-            <Button
-              className="w-full bg-blue-600 text-white"
-              disabled={addMutation.isPending || !staffId || !startDT || !endDT}
-              onClick={() => addMutation.mutate()}
-            >
-              {addMutation.isPending ? "Guardando..." : "Agendar sesión"}
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        <Divider />
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextField
+            select
+            label="Especialista *"
+            value={staffId}
+            onChange={(e) => setStaffId(e.target.value)}
+            fullWidth
+            size="small"
+          >
+            <MenuItem value="">Seleccionar...</MenuItem>
+            {staffList.map((st) => (
+              <MenuItem key={st.id} value={st.id}>
+                {st.full_name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            type="datetime-local"
+            label="Inicio *"
+            value={startDT}
+            onChange={(e) => {
+              setStartDT(e.target.value);
+              if (endDT && new Date(e.target.value) >= new Date(endDT)) {
+                const newEnd = addMinutes(new Date(e.target.value), 30);
+                setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+              }
+            }}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            size="small"
+          />
+          <TextField
+            type="datetime-local"
+            label="Fin *"
+            value={endDT}
+            onChange={(e) => setEndDT(e.target.value)}
+            disabled={!startDT}
+            InputProps={{ inputProps: { min: startDT } }}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            size="small"
+          />
+          <TextField
+            select
+            label="Duración estimada (referencia)"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            fullWidth
+            size="small"
+          >
+            {DURATION_OPTIONS.map((d) => (
+              <MenuItem key={d} value={d}>
+                {d} minutos
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            multiline
+            rows={3}
+            label="Notas"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            fullWidth
+            size="small"
+          />
+
+          <Button
+            variant="contained"
+            disabled={addMutation.isPending || !staffId || !startDT || !endDT}
+            onClick={() => addMutation.mutate()}
+            fullWidth
+          >
+            {addMutation.isPending ? "Guardando..." : "Agendar sesión"}
+          </Button>
+        </Box>
+      </Box>
+    </Drawer>
   );
 }
 
@@ -570,12 +667,10 @@ const ReservationsPage = () => {
     queryKey: ["staff"],
     queryFn: api.getStaff,
   });
-
   const { data: servicesList = [] } = useQuery({
     queryKey: ["services"],
     queryFn: api.getServices,
   });
-
   const { data: appointmentStatuses = [] } = useQuery({
     queryKey: ["appointmentStatuses"],
     queryFn: api.getAppointmentStatuses,
@@ -623,7 +718,11 @@ const ReservationsPage = () => {
 
   const handleCancelAppointment = async () => {
     if (!selectedAppointment) return;
-    const notes = await showAlert.prompt("Cancelar reserva", "Comentario de cancelación (opcional):", "Motivo de la cancelación...");
+    const notes = await showAlert.prompt(
+      "Cancelar reserva",
+      "Comentario de cancelación (opcional):",
+      "Motivo de la cancelación...",
+    );
     if (notes === null) return;
     cancelMutation.mutate({ id: selectedAppointment.id, notes });
   };
@@ -633,7 +732,7 @@ const ReservationsPage = () => {
     const ok = await showAlert.confirm(
       "Finalizar reserva",
       "¿Deseas finalizar esta reserva? Esta acción no se puede deshacer.",
-      "Sí, finalizar"
+      "Sí, finalizar",
     );
     if (!ok) return;
     completeMutation.mutate(selectedAppointment.id);
@@ -646,379 +745,546 @@ const ReservationsPage = () => {
 
   const sessions = appointmentDetail?.sessions ?? [];
 
+  // Definición de columnas DataGrid
+  const columns: GridColDef[] = useMemo(
+    () => [
+      { field: "id", headerName: "#", width: 70 },
+      {
+        field: "patient_name",
+        headerName: "Paciente",
+        flex: 1,
+        minWidth: 150,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="body2" fontWeight={500}>
+              {params.row.patient_name}
+            </Typography>
+            {params.row.patient_phone && (
+              <Typography variant="caption" color="text.secondary">
+                {params.row.patient_phone}
+              </Typography>
+            )}
+          </Box>
+        ),
+      },
+      {
+        field: "service_name",
+        headerName: "Servicio",
+        flex: 1.2,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: params.row.label_color,
+                }}
+              />
+              <Typography variant="body2">{params.row.service_name}</Typography>
+            </Box>
+            {params.row.specialty_name && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ ml: 2.2 }}
+              >
+                {params.row.specialty_name}
+              </Typography>
+            )}
+          </Box>
+        ),
+      },
+      {
+        field: "session_count",
+        headerName: "Sesiones",
+        width: 100,
+        align: "center",
+        headerAlign: "center",
+        renderCell: (params) => (
+          <Chip size="small" label={params.row.session_count ?? 0} />
+        ),
+      },
+      {
+        field: "status_name",
+        headerName: "Estado",
+        width: 150,
+        renderCell: (params) => (
+          <Chip
+            size="small"
+            label={params.row.status_name}
+            color={getStatusColor(params.row.status_name)}
+            sx={{ fontWeight: 500 }}
+          />
+        ),
+      },
+      {
+        field: "created_at",
+        headerName: "Creada",
+        width: 150,
+        valueGetter: (params) => fmtDate(params),
+      },
+      {
+        field: "actions",
+        headerName: "Acciones",
+        width: 120,
+        sortable: false,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => openDetail(params.row as Appointment)}
+          >
+            Ver detalle
+          </Button>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-6 flex flex-col h-full">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-800">
+    <Box
+      sx={{ display: "flex", flexDirection: "column", gap: 3, height: "100%" }}
+    >
+      <Box>
+        <Typography
+          variant="h4"
+          fontWeight="bold"
+          color="text.primary"
+          gutterBottom
+        >
           Reservas
-        </h1>
-        <p className="text-slate-500">Gestiona las reservas y sus sesiones.</p>
-      </div>
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Gestiona las reservas y sus sesiones.
+        </Typography>
+      </Box>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-slate-600">Servicio</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-              value={filterService}
-              onChange={(e) => setFilterService(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {servicesList.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-slate-600">Estado</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-slate-50 px-3 text-sm"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="">Todos</option>
-              {appointmentStatuses.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-slate-600">Desde</Label>
-            <Input
-              type="date"
-              className="h-9 bg-slate-50 text-sm"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-slate-600">Hasta</Label>
-            <Input
-              type="date"
-              className="h-9 bg-slate-50 text-sm"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 mt-3 justify-end">
-          <Button variant="outline" size="sm" onClick={clearFilters}>
-            Limpiar
-          </Button>
-          <Button
-            size="sm"
-            className="bg-blue-600 text-white"
-            onClick={applyFilters}
-          >
-            Aplicar filtros
-          </Button>
-        </div>
-      </div>
-
-      {/* Tabla de reservas */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1">
-        {isLoading ? (
-          <div className="p-8 text-center text-slate-400">
-            Cargando reservas...
-          </div>
-        ) : appointments.length === 0 ? (
-          <div className="p-8 text-center text-slate-400">
-            No hay reservas que coincidan.
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  #
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  Paciente
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  Servicio
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  Sesiones
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  Estado
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-slate-600">
-                  Creada
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {appointments.map((apt) => (
-                <tr
-                  key={apt.id}
-                  className="hover:bg-slate-50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                    #{apt.id}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-800">
-                      {apt.patient_name}
-                    </div>
-                    {apt.patient_phone && (
-                      <div className="text-xs text-slate-400">
-                        {apt.patient_phone}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: apt.label_color }}
-                      />
-                      <span className="text-slate-700">{apt.service_name}</span>
-                    </div>
-                    {apt.specialty_name && (
-                      <div className="text-xs text-slate-400 ml-4">
-                        {apt.specialty_name}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-medium">
-                      {apt.session_count ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[apt.status_name] ?? "bg-slate-100 text-slate-600"}`}
-                    >
-                      {apt.status_name}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
-                    {fmtDate(apt.created_at)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openDetail(apt)}
-                    >
-                      Ver detalle
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Panel de detalle de reserva */}
-      <Sheet
-        open={isDetailOpen}
-        onOpenChange={(v) => {
-          if (!v) setIsDetailOpen(false);
+      <Box
+        sx={{
+          bgcolor: "background.paper",
+          p: 2,
+          borderRadius: 2,
+          boxShadow: 1,
         }}
       >
-        <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
+            gap: 2,
+          }}
+        >
+          <TextField
+            select
+            label="Servicio"
+            value={filterService}
+            onChange={(e) => setFilterService(e.target.value)}
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {servicesList.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Estado"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {appointmentStatuses.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            type="date"
+            label="Desde"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            type="date"
+            label="Hasta"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            fullWidth
+          />
+        </Box>
+        <Box
+          sx={{ display: "flex", gap: 1, mt: 2, justifyContent: "flex-end" }}
+        >
+          <Button variant="outlined" size="small" onClick={clearFilters}>
+            Limpiar
+          </Button>
+          <Button variant="contained" size="small" onClick={applyFilters}>
+            Aplicar filtros
+          </Button>
+        </Box>
+      </Box>
+
+      {/* DataGrid */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 1,
+          overflow: "hidden",
+          minHeight: 400,
+        }}
+      >
+        <DataGrid
+          rows={appointments}
+          columns={columns}
+          loading={isLoading}
+          getRowHeight={() => "auto"}
+          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          pageSizeOptions={[10, 25, 50]}
+          disableRowSelectionOnClick
+          sx={{ border: 0, "& .MuiDataGrid-cell": { py: 1 } }}
+        />
+      </Box>
+
+      {/* Panel de detalle de reserva */}
+      <Drawer
+        anchor="right"
+        open={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      >
+        <Box
+          sx={{
+            width: { xs: "100vw", sm: 600 },
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+          }}
+        >
           {appointmentDetail && (
             <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: appointmentDetail.label_color }}
-                  />
-                  {appointmentDetail.service_name}
-                </SheetTitle>
-                <SheetDescription>
-                  Reserva #{appointmentDetail.id} —{" "}
-                  {appointmentDetail.patient_name}
-                </SheetDescription>
-              </SheetHeader>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight="bold"
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: "50%",
+                        bgcolor: appointmentDetail.label_color,
+                      }}
+                    />
+                    {appointmentDetail.service_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Reserva #{appointmentDetail.id} —{" "}
+                    {appointmentDetail.patient_name}
+                  </Typography>
+                </Box>
+                <IconButton onClick={() => setIsDetailOpen(false)} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </Box>
 
-              <div className="mt-6 space-y-6">
-                {/* Info general */}
-                <div className="bg-slate-50 rounded-lg p-4 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">
-                      Paciente
-                    </p>
-                    <p className="font-semibold">
-                      {appointmentDetail.patient_name}
-                    </p>
-                    {appointmentDetail.patient_phone && (
-                      <p className="text-slate-500 text-xs">
-                        {appointmentDetail.patient_phone}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">
-                      Estado
-                    </p>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[appointmentDetail.status_name] ?? "bg-slate-100 text-slate-600"}`}
-                    >
-                      {appointmentDetail.status_name}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">
-                      Especialidad
-                    </p>
-                    <p>{appointmentDetail.specialty_name ?? "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">
-                      Creada
-                    </p>
-                    <p>{fmtDate(appointmentDetail.created_at)}</p>
-                  </div>
-                  {appointmentDetail.notes && (
-                    <div className="col-span-2">
-                      <p className="text-slate-400 text-xs uppercase tracking-wide mb-0.5">
-                        Notas
-                      </p>
-                      <p className="text-slate-600 text-xs">
-                        {appointmentDetail.notes}
-                      </p>
-                    </div>
+              <Divider />
+
+              {/* Info general */}
+              <Box
+                sx={{
+                  bgcolor: "grey.50",
+                  p: 2,
+                  borderRadius: 2,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 2,
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    textTransform="uppercase"
+                  >
+                    Paciente
+                  </Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {appointmentDetail.patient_name}
+                  </Typography>
+                  {appointmentDetail.patient_phone && (
+                    <Typography variant="caption" color="text.secondary">
+                      {appointmentDetail.patient_phone}
+                    </Typography>
                   )}
-                </div>
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    textTransform="uppercase"
+                  >
+                    Estado
+                  </Typography>
+                  <Box>
+                    <Chip
+                      size="small"
+                      label={appointmentDetail.status_name}
+                      color={getStatusColor(appointmentDetail.status_name)}
+                      sx={{ mt: 0.5 }}
+                    />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    textTransform="uppercase"
+                  >
+                    Especialidad
+                  </Typography>
+                  <Typography variant="body2">
+                    {appointmentDetail.specialty_name ?? "—"}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    textTransform="uppercase"
+                  >
+                    Creada
+                  </Typography>
+                  <Typography variant="body2">
+                    {fmtDate(appointmentDetail.created_at)}
+                  </Typography>
+                </Box>
+                {appointmentDetail.notes && (
+                  <Box sx={{ gridColumn: "span 2" }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      textTransform="uppercase"
+                    >
+                      Notas
+                    </Typography>
+                    <Typography variant="body2">
+                      {appointmentDetail.notes}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
 
-                {/* Lista de sesiones */}
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-slate-700">
-                      Sesiones ({sessions.length})
-                    </h3>
-                    {appointmentDetail.status_code ===
-                      AppointmentStatusCodes.IN_TREATMENT && (
-                      <Button
-                        size="sm"
-                        className="bg-blue-600 text-white"
-                        onClick={() => setIsAddSessionOpen(true)}
+              {/* Lista de sesiones */}
+              <Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Sesiones ({sessions.length})
+                  </Typography>
+                  {appointmentDetail.status_code ===
+                    AppointmentStatusCodes.IN_TREATMENT && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => setIsAddSessionOpen(true)}
+                    >
+                      + Nueva sesión
+                    </Button>
+                  )}
+                </Box>
+
+                {sessions.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No hay sesiones agendadas.
+                  </Typography>
+                ) : (
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                  >
+                    {sessions.map((sess) => (
+                      <Box
+                        key={sess.id}
+                        sx={{
+                          border: 1,
+                          borderColor: "grey.200",
+                          borderRadius: 2,
+                          p: 2,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          "&:hover": { bgcolor: "grey.50" },
+                        }}
                       >
-                        + Nueva sesión
-                      </Button>
-                    )}
-                  </div>
-
-                  {sessions.length === 0 ? (
-                    <p className="text-sm text-slate-400">
-                      No hay sesiones agendadas.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {sessions.map((sess) => (
-                        <div
-                          key={sess.id}
-                          className="border border-slate-200 rounded-lg p-3 flex items-center justify-between hover:bg-slate-50 transition"
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.5,
+                          }}
                         >
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-500">
-                                Sesión #{sess.session_number}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${SESSION_STATUS_COLORS[sess.session_status] ?? "bg-slate-100 text-slate-600"}`}
-                              >
-                                {sess.session_status}
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium text-slate-700">
-                              {sess.staff_name}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {fmtDate(sess.start_date_time)} →{" "}
-                              {format(parseISO(sess.end_date_time), "HH:mm", {
-                                locale: es,
-                              })}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSession({
-                                ...sess,
-                                patient_name: appointmentDetail.patient_name,
-                                service_name: appointmentDetail.service_name,
-                              });
-                              setIsSessionModalOpen(true);
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
                             }}
                           >
-                            Gestionar
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                            <Typography
+                              variant="caption"
+                              fontWeight="bold"
+                              color="text.secondary"
+                            >
+                              Sesión #{sess.session_number}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={sess.session_status}
+                              color={getSessionStatusColor(sess.session_status)}
+                              sx={{ height: 20, fontSize: "0.65rem" }}
+                            />
+                          </Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {sess.staff_name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {fmtDate(sess.start_date_time)} →{" "}
+                            {format(parseISO(sess.end_date_time), "HH:mm", {
+                              locale: es,
+                            })}
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => {
+                            setSelectedSession({
+                              ...sess,
+                              patient_name: appointmentDetail.patient_name,
+                              service_name: appointmentDetail.service_name,
+                            });
+                            setIsSessionModalOpen(true);
+                          }}
+                        >
+                          Gestionar
+                        </Button>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
 
-                {/* Acciones de la reserva */}
-                {appointmentDetail.status_code ===
-                  AppointmentStatusCodes.IN_TREATMENT &&
-                  (() => {
-                    const hasPendingSessions = sessions.some(
-                      (s) =>
-                        s.session_status_code ===
-                          SessionStatusCodes.SCHEDULED ||
-                        s.session_status_code === SessionStatusCodes.CONFIRMED,
-                    );
-                    return (
-                      <div className="border-t border-slate-200 pt-4 flex flex-col gap-2">
-                        <Button
-                          variant="outline"
-                          className="w-full border-green-400 text-green-700 hover:bg-green-50 disabled:opacity-50"
-                          disabled={
-                            hasPendingSessions || completeMutation.isPending
-                          }
-                          onClick={handleCompleteAppointment}
-                          title={
-                            hasPendingSessions
-                              ? "Finaliza o cancela todas las sesiones pendientes antes de cerrar la reserva"
-                              : "Finalizar reserva"
-                          }
+              {/* Acciones de la reserva */}
+              {appointmentDetail.status_code ===
+                AppointmentStatusCodes.IN_TREATMENT &&
+                (() => {
+                  const hasPendingSessions = sessions.some(
+                    (s) =>
+                      s.session_status_code === SessionStatusCodes.SCHEDULED ||
+                      s.session_status_code === SessionStatusCodes.CONFIRMED,
+                  );
+                  return (
+                    <Box
+                      sx={{
+                        mt: "auto",
+                        pt: 2,
+                        borderTop: 1,
+                        borderColor: "divider",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        fullWidth
+                        disabled={
+                          hasPendingSessions || completeMutation.isPending
+                        }
+                        onClick={handleCompleteAppointment}
+                      >
+                        {completeMutation.isPending
+                          ? "Finalizando..."
+                          : "✅ Finalizar reserva"}
+                      </Button>
+                      {hasPendingSessions && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          textAlign="center"
                         >
-                          {completeMutation.isPending
-                            ? "Finalizando..."
-                            : "✅ Finalizar reserva"}
-                        </Button>
-                        {hasPendingSessions && (
-                          <p className="text-xs text-slate-400 text-center">
-                            Hay sesiones pendientes — finaliza o cancela cada
-                            una para poder cerrar la reserva.
-                          </p>
-                        )}
-                        <Button
-                          variant="outline"
-                          className="w-full border-red-300 text-red-600 hover:bg-red-50"
-                          disabled={cancelMutation.isPending}
-                          onClick={handleCancelAppointment}
-                        >
-                          {cancelMutation.isPending
-                            ? "Cancelando..."
-                            : "✖ Cancelar reserva completa"}
-                        </Button>
-                      </div>
-                    );
-                  })()}
-              </div>
+                          Hay sesiones pendientes — finaliza o cancela cada una
+                          para poder cerrar la reserva.
+                        </Typography>
+                      )}
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        fullWidth
+                        disabled={cancelMutation.isPending}
+                        onClick={handleCancelAppointment}
+                      >
+                        {cancelMutation.isPending
+                          ? "Cancelando..."
+                          : "✖ Cancelar reserva completa"}
+                      </Button>
+                    </Box>
+                  );
+                })()}
             </>
           )}
-        </SheetContent>
-      </Sheet>
+        </Box>
+      </Drawer>
 
-      {/* Modal de gestión de sesión */}
+      {/* Modales de sesión (Drawers apilados) */}
       <SessionModal
         session={selectedSession}
         staffList={staffList}
@@ -1026,8 +1292,6 @@ const ReservationsPage = () => {
         onClose={() => setIsSessionModalOpen(false)}
         onSaved={() => refetchDetail()}
       />
-
-      {/* Modal de agregar sesión */}
       <AddSessionModal
         appointment={selectedAppointment}
         staffList={staffList}
@@ -1035,7 +1299,7 @@ const ReservationsPage = () => {
         onClose={() => setIsAddSessionOpen(false)}
         onSaved={() => refetchDetail()}
       />
-    </div>
+    </Box>
   );
 };
 
