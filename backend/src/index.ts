@@ -5,6 +5,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { httpLogger } from "./middlewares/httpLogger";
 import { env } from "./config/env";
 import logger from "./config/logger";
+import path from "path";
 
 const app = express();
 
@@ -14,6 +15,20 @@ app.use(express.json());
 app.use(httpLogger);
 
 app.use("/api", routes);
+
+// --- Serve frontend for Electron ---
+const isElectron = process.versions.hasOwnProperty("electron");
+
+const frontendPath = isElectron
+  ? path.join(__dirname, "../frontend")
+  : path.join(__dirname, "../../frontend/dist");
+
+app.use(express.static(frontendPath));
+
+app.get(/.*/, (_, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+// -----------------------------------
 
 app.use(errorHandler);
 

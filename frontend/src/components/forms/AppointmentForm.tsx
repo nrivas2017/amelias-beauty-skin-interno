@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, addMinutes } from "date-fns";
+import { format, addMinutes, differenceInMinutes } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
@@ -9,6 +9,8 @@ import type {
   Session,
   Staff,
   LaserClinicalRecord,
+  Patient,
+  Service,
 } from "@/services/types";
 
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -16,7 +18,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
 import Stepper from "@mui/material/Stepper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
@@ -25,18 +26,18 @@ import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Autocomplete from "@mui/material/Autocomplete";
+import type { SlotInfo } from "react-big-calendar";
+import Swal from "sweetalert2";
 
 const SPECIALTY_LASER = "LASER_DEPILATION";
-
-// Opciones de duración estimada: 15 a 60 minutos en intervalos de 5
-const DURATION_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 5 + 10);
 
 interface SessionRow extends CreateSessionDTO {
   _key: number;
 }
 
 interface AppointmentFormProps {
-  selectedSlot: { start: Date; end: Date; resourceId?: string | number } | null;
+  selectedSlot: SlotInfo | null;
   onClose: () => void;
   existingSessions: Session[];
   staffList: Staff[];
@@ -44,25 +45,25 @@ interface AppointmentFormProps {
 
 type Step = 1 | 2 | 3;
 
-export function AppointmentForm({
+export const AppointmentForm = ({
   selectedSlot,
   onClose,
   existingSessions,
   staffList,
-}: AppointmentFormProps) {
+}: AppointmentFormProps) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>(1);
 
-  const [patientId, setPatientId] = useState<string | number>("");
-  const [serviceId, setServiceId] = useState<string | number>("");
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const [sessionRows, setSessionRows] = useState<SessionRow[]>([
     {
       _key: 0,
-      staff_id: "",
+      staff: null,
       start_date_time: "",
       end_date_time: "",
-      estimated_duration_minutes: 30,
+      estimated_duration_minutes: 0,
     },
   ]);
 
@@ -74,20 +75,27 @@ export function AppointmentForm({
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
+    const findStaff = staffList.find((s) => s.id === selectedSlot?.resourceId);
     if (selectedSlot) {
       const startStr = format(selectedSlot.start, "yyyy-MM-dd'T'HH:mm");
       const endStr = format(selectedSlot.end, "yyyy-MM-dd'T'HH:mm");
+
+      const duration = differenceInMinutes(
+        selectedSlot.end,
+        selectedSlot.start,
+      );
+
       setSessionRows([
         {
           _key: 0,
-          staff_id: selectedSlot.resourceId ?? "",
+          staff: findStaff ?? null,
           start_date_time: startStr,
           end_date_time: endStr,
-          estimated_duration_minutes: 30,
+          estimated_duration_minutes: duration,
         },
       ]);
     }
-  }, [selectedSlot]);
+  }, [selectedSlot, staffList]);
 
   const { data: servicesList = [] } = useQuery({
     queryKey: ["services"],
@@ -99,9 +107,6 @@ export function AppointmentForm({
     queryFn: api.getPatients,
   });
 
-  const selectedService = servicesList.find(
-    (s: any) => String(s.id) === String(serviceId),
-  );
   const isLaser = selectedService?.specialty_code === SPECIALTY_LASER;
 
   const createMutation = useMutation({
@@ -119,10 +124,10 @@ export function AppointmentForm({
       ...prev,
       {
         _key: Date.now(),
-        staff_id: "",
+        staff: null,
         start_date_time: "",
         end_date_time: "",
-        estimated_duration_minutes: 30,
+        estimated_duration_minutes: 0,
       },
     ]);
   };
@@ -137,20 +142,41 @@ export function AppointmentForm({
     value: any,
   ) => {
     setSessionRows((prev) =>
-      prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
+      prev.map((r) => {
+        if (r._key !== key) return r;
+
+        const updatedRow = { ...r, [field]: value };
+
+        if (field === "start_date_time" || field === "end_date_time") {
+          const start = updatedRow.start_date_time
+            ? new Date(updatedRow.start_date_time)
+            : null;
+          const end = updatedRow.end_date_time
+            ? new Date(updatedRow.end_date_time)
+            : null;
+
+          if (
+            start &&
+            end &&
+            !isNaN(start.getTime()) &&
+            !isNaN(end.getTime())
+          ) {
+            const diff = differenceInMinutes(end, start);
+            updatedRow.estimated_duration_minutes = diff;
+          }
+        }
+
+        return updatedRow;
+      }),
     );
   };
 
-  const checkConflict = (
-    staffId: string | number,
-    start: string,
-    end: string,
-  ) => {
-    if (!staffId || !start || !end) return false;
+  const checkConflict = (staff: Staff | null, start: string, end: string) => {
+    if (!staff || !start || !end) return false;
     const newStart = new Date(start);
     const newEnd = new Date(end);
     return existingSessions.some((s) => {
-      if (String(s.staff_id) !== String(staffId)) return false;
+      if (String(s.staff_id) !== String(staff.id)) return false;
       const eStart = new Date(s.start_date_time);
       const eEnd = new Date(s.end_date_time);
       return newStart < eEnd && newEnd > eStart;
@@ -158,7 +184,7 @@ export function AppointmentForm({
   };
 
   const goStep2 = () => {
-    if (!patientId || !serviceId) {
+    if (!selectedPatient || !selectedService) {
       showAlert.warning(
         "Campos incompletos",
         "Por favor selecciona un paciente y un servicio.",
@@ -170,7 +196,7 @@ export function AppointmentForm({
 
   const goStep3OrSave = () => {
     const invalid = sessionRows.find(
-      (r) => !r.staff_id || !r.start_date_time || !r.end_date_time,
+      (r) => !r.staff || !r.start_date_time || !r.end_date_time,
     );
     if (invalid) {
       showAlert.warning(
@@ -194,31 +220,37 @@ export function AppointmentForm({
     }
 
     const hasConflict = sessionRows.some((r) =>
-      checkConflict(r.staff_id, r.start_date_time, r.end_date_time),
+      checkConflict(r.staff, r.start_date_time, r.end_date_time),
     );
 
     if (hasConflict) {
-      const ok = window.confirm(
-        "⚠️ Uno o más especialistas ya tienen sesiones en esos horarios. ¿Deseas agendar de todas formas?",
-      );
-      if (!ok) return;
-    }
-
-    if (isLaser) {
-      setStep(3);
-    } else {
-      handleSave(null);
+      Swal.fire({
+        title: "¿Estás seguro?",
+        text: "Uno o más especialistas ya tienen sesiones en esos horarios. ¿Deseas agendar de todas formas?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agendar",
+        cancelButtonText: "Cancelar",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          if (isLaser) {
+            setStep(3);
+          } else {
+            handleSave(null);
+          }
+        }
+      });
     }
   };
 
   const handleSave = (laser: typeof laserData) => {
     const payload = {
-      patient_id: patientId,
-      service_id: serviceId,
+      patient_id: String(selectedPatient?.id),
+      service_id: String(selectedService?.id),
       notes: notes || undefined,
       sessions: sessionRows.map(({ _key, ...r }) => ({
         ...r,
-        staff_id: r.staff_id,
+        staff_id: r.staff?.id,
         start_date_time: new Date(r.start_date_time).toISOString(),
         end_date_time: new Date(r.end_date_time).toISOString(),
         estimated_duration_minutes: r.estimated_duration_minutes,
@@ -246,42 +278,53 @@ export function AppointmentForm({
       {/* ── Paso 1: Paciente y Servicio ────────────────────────────────── */}
       {step === 1 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <TextField
-            select
-            label="Paciente *"
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            fullWidth
-            variant="outlined"
-          >
-            <MenuItem value="">
-              <em>Selecciona un paciente...</em>
-            </MenuItem>
-            {patients.map((p: any) => (
-              <MenuItem key={p.id} value={p.id}>
-                {p.full_name} — {p.phone}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Autocomplete
+            value={selectedPatient}
+            options={patients}
+            onChange={(_, newValue: Patient | null) => {
+              setSelectedPatient(newValue);
+            }}
+            getOptionLabel={(option) => `${option.full_name} - ${option.email}`}
+            renderInput={(params) => (
+              <TextField {...params} label="Paciente *" />
+            )}
+          />
 
           <Box>
-            <TextField
-              select
-              label="Servicio *"
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              fullWidth
-              variant="outlined"
-            >
-              <MenuItem value="">
-                <em>Selecciona un servicio...</em>
-              </MenuItem>
-              {servicesList.map((s: any) => (
-                <MenuItem key={s.id} value={s.id}>
-                  {s.name} {s.specialty_name ? ` — ${s.specialty_name}` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Autocomplete
+              value={selectedService}
+              options={servicesList}
+              onChange={(_, newValue: Service | null) => {
+                setSelectedService(newValue);
+              }}
+              getOptionLabel={(option) => option.name}
+              renderInput={(params) => (
+                <TextField {...params} label="Servicio *" />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 14,
+                      height: 14,
+                      flexShrink: 0,
+                      borderRadius: "50%",
+                      mr: 1.5,
+                      backgroundColor: option.label_color,
+                      border: "1px solid rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Typography variant="body1">{option.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.specialty_name}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
+            />
+
             {selectedService && (
               <Typography
                 variant="caption"
@@ -384,25 +427,17 @@ export function AppointmentForm({
                   )}
                 </Box>
 
-                <TextField
-                  select
-                  label="Especialista *"
-                  size="small"
-                  value={row.staff_id}
-                  onChange={(e) =>
-                    updateRow(row._key, "staff_id", e.target.value)
-                  }
-                  fullWidth
-                >
-                  <MenuItem value="">
-                    <em>Seleccionar...</em>
-                  </MenuItem>
-                  {staffList.map((st) => (
-                    <MenuItem key={st.id} value={st.id}>
-                      {st.full_name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  value={row.staff}
+                  options={staffList}
+                  onChange={(_, newValue: Staff | null) => {
+                    updateRow(row._key, "staff", newValue);
+                  }}
+                  getOptionLabel={(option) => option.full_name}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Especialista *" />
+                  )}
+                />
 
                 <Box
                   sx={{
@@ -413,6 +448,7 @@ export function AppointmentForm({
                 >
                   <DateTimePicker
                     label="Inicio *"
+                    ampm
                     value={
                       row.start_date_time ? new Date(row.start_date_time) : null
                     }
@@ -436,11 +472,12 @@ export function AppointmentForm({
                       }
                     }}
                     slotProps={{
-                      textField: { size: "small", fullWidth: true },
+                      textField: { fullWidth: true },
                     }}
                   />
                   <DateTimePicker
                     label="Fin *"
+                    ampm
                     value={
                       row.end_date_time ? new Date(row.end_date_time) : null
                     }
@@ -458,38 +495,33 @@ export function AppointmentForm({
                         : undefined
                     }
                     slotProps={{
-                      textField: { size: "small", fullWidth: true },
+                      textField: { fullWidth: true },
                     }}
                   />
                 </Box>
 
                 <TextField
-                  select
-                  label="Duración estimada (referencia)"
-                  size="small"
-                  value={row.estimated_duration_minutes}
-                  onChange={(e) =>
-                    updateRow(
-                      row._key,
-                      "estimated_duration_minutes",
-                      Number(e.target.value),
-                    )
-                  }
+                  label="Duración estimada"
+                  value={`${row.estimated_duration_minutes} minutos`}
                   fullWidth
-                >
-                  {DURATION_OPTIONS.map((d) => (
-                    <MenuItem key={d} value={d}>
-                      {d} minutos
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  disabled
+                />
+
+                <TextField
+                  multiline
+                  rows={3}
+                  label="Notas"
+                  value={row.notes}
+                  onChange={(e) => updateRow(row._key, "notes", e.target.value)}
+                  fullWidth
+                />
 
                 {/* Alerta de conflicto de horario de staff */}
-                {row.staff_id &&
+                {row.staff &&
                   row.start_date_time &&
                   row.end_date_time &&
                   checkConflict(
-                    row.staff_id,
+                    row.staff,
                     row.start_date_time,
                     row.end_date_time,
                   ) && (
@@ -570,4 +602,4 @@ export function AppointmentForm({
       )}
     </Box>
   );
-}
+};

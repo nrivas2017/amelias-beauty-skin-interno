@@ -1,6 +1,7 @@
 import type {
   Appointment,
   AppointmentFilters,
+  AppointmentStatus,
   CreateAppointmentDTO,
   CreatePatientDTO,
   CreateServiceDTO,
@@ -10,6 +11,7 @@ import type {
   Patient,
   Service,
   Session,
+  SessionStatus,
   Specialty,
   Staff,
   UpdateServiceDTO,
@@ -22,21 +24,22 @@ const API_URL = "http://localhost:3000/api";
 
 export const api = {
   // ─── CATALOGS ────────────────────────────────────────────────────────────
-  getAppointmentStatuses: async (): Promise<any[]> => {
+  getAppointmentStatuses: async (): Promise<AppointmentStatus[]> => {
     const res = await fetch(`${API_URL}/catalogs/appointment-statuses`);
-    if (!res.ok) throw new Error("Error fetching appointment statuses");
+    if (!res.ok) throw new Error("Error obteniendo los estados de las citas");
     return res.json();
   },
-  getSessionStatuses: async (): Promise<any[]> => {
+  getSessionStatuses: async (): Promise<SessionStatus[]> => {
     const res = await fetch(`${API_URL}/catalogs/session-statuses`);
-    if (!res.ok) throw new Error("Error fetching session statuses");
+    if (!res.ok)
+      throw new Error("Error obteniendo los estados de las sesiones");
     return res.json();
   },
 
   // ─── PERSONAL (STAFF) ────────────────────────────────────────────────────
   getStaff: async (): Promise<Staff[]> => {
     const res = await fetch(`${API_URL}/staff`);
-    if (!res.ok) throw new Error("Error fetching staff");
+    if (!res.ok) throw new Error("Error obteniendo el personal");
     return res.json();
   },
   createStaff: async (data: CreateStaffDTO): Promise<Staff> => {
@@ -45,7 +48,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error creating staff");
+    if (!res.ok) throw new Error("Error creando el personal");
     return res.json();
   },
   updateStaff: async (
@@ -57,14 +60,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error updating staff");
+    if (!res.ok) throw new Error("Error actualizando el personal");
     return res.json();
   },
 
   // ─── SERVICIOS ────────────────────────────────────────────────────────────
   getServices: async (): Promise<Service[]> => {
     const res = await fetch(`${API_URL}/services`);
-    if (!res.ok) throw new Error("Error fetching services");
+    if (!res.ok) throw new Error("Error obteniendo los servicios");
     return res.json();
   },
   createService: async (data: CreateServiceDTO): Promise<Service> => {
@@ -73,7 +76,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error creating service");
+    if (!res.ok) throw new Error("Error creando el servicio");
     return res.json();
   },
   updateService: async (
@@ -85,14 +88,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error updating service");
+    if (!res.ok) throw new Error("Error actualizando el servicio");
     return res.json();
   },
 
   // ─── ESPECIALIDADES ───────────────────────────────────────────────────────
   getSpecialties: async (): Promise<Specialty[]> => {
     const res = await fetch(`${API_URL}/specialties`);
-    if (!res.ok) throw new Error("Error fetching specialties");
+    if (!res.ok) throw new Error("Error obteniendo las especialidades");
     return res.json();
   },
   createSpecialty: async (data: CreateSpecialtyDTO): Promise<Specialty> => {
@@ -101,10 +104,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || "Error creating specialty");
-    }
+    if (!res.ok) throw new Error("Error creando la especialidad");
     return res.json();
   },
   updateSpecialty: async (
@@ -116,17 +116,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.message || "Error updating specialty");
-    }
+    if (!res.ok) throw new Error("Error actualizando la especialidad");
     return res.json();
   },
 
   // ─── PACIENTES ────────────────────────────────────────────────────────────
   getPatients: async (): Promise<Patient[]> => {
     const res = await fetch(`${API_URL}/patients`);
-    if (!res.ok) throw new Error("Error fetching patients");
+    if (!res.ok) throw new Error("Error obteniendo los pacientes");
     return res.json();
   },
   createPatient: async (data: CreatePatientDTO): Promise<Patient> => {
@@ -135,7 +132,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error("Error creating patient");
+    if (!res.ok) throw new Error("Error creando el paciente");
     return res.json();
   },
   updatePatient: async (
@@ -147,12 +144,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(
-        errData.errors ? errData.errors.join(", ") : "Error updating patient",
-      );
-    }
+    if (!res.ok) throw new Error("Error actualizando el paciente");
     return res.json();
   },
 
@@ -164,7 +156,7 @@ export const api = {
       ? `${API_URL}/appointments/sessions?date=${date}`
       : `${API_URL}/appointments/sessions`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Error fetching sessions");
+    if (!res.ok) throw new Error("Error obteniendo las sesiones");
     return res.json();
   },
 
@@ -182,14 +174,14 @@ export const api = {
     if (filters?.date_to) params.set("date_to", filters.date_to);
     const qs = params.toString();
     const res = await fetch(`${API_URL}/appointments${qs ? `?${qs}` : ""}`);
-    if (!res.ok) throw new Error("Error fetching appointments");
+    if (!res.ok) throw new Error("Error obteniendo las reservas");
     return res.json();
   },
 
   /** Detalle de una reserva (incluye sesiones y ficha láser si aplica) */
   getAppointmentById: async (id: string | number): Promise<Appointment> => {
     const res = await fetch(`${API_URL}/appointments/${id}`);
-    if (!res.ok) throw new Error("Error fetching appointment");
+    if (!res.ok) throw new Error("Error obteniendo la reserva");
     return res.json();
   },
 
@@ -202,10 +194,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || "Error creating appointment");
-    }
+    if (!res.ok) throw new Error("Error creando la reserva");
     return res.json();
   },
 
@@ -228,10 +217,7 @@ export const api = {
         body: JSON.stringify(data),
       },
     );
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || "Error adding session");
-    }
+    if (!res.ok) throw new Error("Error agregando la sesión");
     return res.json();
   },
 
@@ -245,10 +231,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || "Error updating session");
-    }
+    if (!res.ok) throw new Error("Error actualizando la sesión");
     return res.json();
   },
 
@@ -258,10 +241,7 @@ export const api = {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || "Error al eliminar la sesión");
-    }
+    if (!res.ok) throw new Error("Error al eliminar la sesión");
     return res.json();
   },
 
@@ -275,7 +255,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ close_notes }),
     });
-    if (!res.ok) throw new Error("Error canceling appointment");
+    if (!res.ok) throw new Error("Error cancelando la reserva");
     return res.json();
   },
 
@@ -287,10 +267,7 @@ export const api = {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.message || "Error al finalizar la reserva");
-    }
+    if (!res.ok) throw new Error("Error al finalizar la reserva");
     return res.json();
   },
 
@@ -301,7 +278,7 @@ export const api = {
     const res = await fetch(
       `${API_URL}/appointments/${appointmentId}/laser-record`,
     );
-    if (!res.ok) throw new Error("Error fetching laser record");
+    if (!res.ok) throw new Error("Error obteniendo la ficha láser");
     return res.json();
   },
 
@@ -318,7 +295,7 @@ export const api = {
         body: JSON.stringify(data),
       },
     );
-    if (!res.ok) throw new Error("Error updating laser record");
+    if (!res.ok) throw new Error("Error actualizando la ficha láser");
     return res.json();
   },
 };

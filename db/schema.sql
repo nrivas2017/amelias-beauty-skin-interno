@@ -7,7 +7,7 @@
 CREATE TABLE specialties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    code TEXT NOT NULL UNIQUE,   -- Ej: 'LASER_DEPILATION', 'MANICURE'
+    code TEXT,
     is_active INTEGER DEFAULT 1
 );
 
@@ -116,8 +116,6 @@ CREATE TABLE appointments (
     patient_id INTEGER NOT NULL,
     service_id INTEGER NOT NULL,
     status_id INTEGER DEFAULT 1,
-    total_price REAL,
-    payment_method TEXT,
     notes TEXT,                          -- notas generales de la reserva
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (patient_id) REFERENCES patients(id),

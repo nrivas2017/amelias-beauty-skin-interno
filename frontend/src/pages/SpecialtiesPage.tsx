@@ -44,7 +44,9 @@ const SpecialtiesPage = () => {
       queryClient.invalidateQueries({ queryKey: ["specialties"] });
       closeModal();
     },
-    onError: (err: any) => showAlert.error("Error al crear", err.message),
+    onError: (err: any) => {
+      return showAlert.error("Error al crear", err.message);
+    },
   });
 
   const updateMutation = useMutation({

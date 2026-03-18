@@ -1,3 +1,17 @@
+import type { AppointmentStatusCode, SessionStatusCode } from "./catalogCodes";
+
+export interface AppointmentStatus {
+  id: string | number;
+  name: string;
+  code: AppointmentStatusCode;
+}
+
+export interface SessionStatus {
+  id: string | number;
+  name: string;
+  code: SessionStatusCode;
+}
+
 export interface Staff {
   id: string | number;
   full_name: string;
@@ -10,12 +24,6 @@ export interface Specialty {
   name: string;
   code: string;
   is_active?: boolean;
-}
-
-export interface SessionStatus {
-  id: number;
-  name: string;
-  code: string;
 }
 
 export interface Service {
@@ -46,17 +54,18 @@ export interface Session {
   session_number: number;
   start_date_time: string;
   end_date_time: string;
-  estimated_duration_minutes?: number;
-  actual_start_time?: string;
-  actual_end_time?: string;
-  notes?: string;
-  close_notes?: string;
-  patient_name?: string;
-  service_name?: string;
-  label_color?: string;
-  specialty_code?: string;
+  estimated_duration_minutes: number;
+  actual_start_time: string;
+  actual_end_time: string;
+  notes: string;
+  close_notes: string;
+  patient_id: string | number;
+  patient_name: string;
+  service_name: string;
+  label_color: string;
+  specialty_code: string;
   staff_id: string | number;
-  staff_name?: string;
+  staff_name: string;
   session_status: string;
   session_status_code: string;
   status_id: string | number;
@@ -76,8 +85,6 @@ export interface Appointment {
   status_id: string | number;
   status_name: string;
   status_code: string;
-  total_price?: number;
-  payment_method?: string;
   notes?: string;
   created_at: string;
   session_count?: number;
@@ -129,7 +136,7 @@ export type UpdateSpecialtyDTO = Partial<CreateSpecialtyDTO>;
 
 // Session DTO (para crear dentro de un appointment)
 export interface CreateSessionDTO {
-  staff_id: string | number;
+  staff: Staff | null;
   start_date_time: string;
   end_date_time: string;
   estimated_duration_minutes?: number;
@@ -140,8 +147,6 @@ export interface CreateSessionDTO {
 export interface CreateAppointmentDTO {
   patient_id: string | number;
   service_id: string | number;
-  total_price?: number;
-  payment_method?: string;
   notes?: string;
   sessions: CreateSessionDTO[];
   laserRecord?: Omit<LaserClinicalRecord, "id" | "appointment_id">;

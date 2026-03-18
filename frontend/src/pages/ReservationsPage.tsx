@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type FunctionComponent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { format, parseISO, addMinutes } from "date-fns";
+import { format, parseISO, addMinutes, differenceInMinutes } from "date-fns";
 import { es } from "date-fns/locale/es";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
@@ -25,8 +25,11 @@ import type { GridColDef } from "@mui/x-data-grid";
 import type {
   Appointment,
   AppointmentFilters,
+  AppointmentStatus,
+  Service,
   Session,
   SessionStatus,
+  Staff,
   UpdateSessionDTO,
 } from "@/services/types";
 import {
@@ -34,6 +37,9 @@ import {
   AppointmentStatusCodes,
   type SessionStatusCode,
 } from "@/services/catalogCodes";
+import Autocomplete from "@mui/material/Autocomplete";
+import Alert from "@mui/material/Alert";
+import Swal from "sweetalert2";
 
 const fmtDate = (dt: string) => {
   try {
@@ -81,19 +87,19 @@ const getSessionStatusColor = (
 
 interface SessionModalProps {
   session: Session | null;
-  staffList: any[];
+  staffList: Staff[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function SessionModal({
+const SessionModal: FunctionComponent<SessionModalProps> = ({
   session,
   staffList,
   open,
   onClose,
   onSaved,
-}: SessionModalProps) {
+}) => {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<"view" | "reschedule" | "close">("view");
 
@@ -125,15 +131,18 @@ function SessionModal({
     onError: (err: any) => showAlert.error("Error", err.message),
   });
 
-  const handleOpen = () => {
-    if (!session) return;
-    setMode("view");
-    setStartDT(format(parseISO(session.start_date_time), "yyyy-MM-dd'T'HH:mm"));
-    setEndDT(format(parseISO(session.end_date_time), "yyyy-MM-dd'T'HH:mm"));
-    setStaffId(String(session.staff_id));
-    setCloseNotes("");
-    setCloseStatus("");
-  };
+  useEffect(() => {
+    if (session && open) {
+      setMode("view");
+      setStartDT(
+        format(parseISO(session.start_date_time), "yyyy-MM-dd'T'HH:mm"),
+      );
+      setEndDT(format(parseISO(session.end_date_time), "yyyy-MM-dd'T'HH:mm"));
+      setStaffId(String(session.staff_id));
+      setCloseNotes("");
+      setCloseStatus("");
+    }
+  }, [session, open]);
 
   const saveReschedule = () => {
     updateMutation.mutate({
@@ -162,12 +171,7 @@ function SessionModal({
   if (!session) return null;
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      SlideProps={{ onEnter: handleOpen }}
-    >
+    <Drawer anchor="right" open={open} onClose={onClose}>
       <Box
         sx={{
           width: { xs: "100vw", sm: 400 },
@@ -343,88 +347,51 @@ function SessionModal({
                 </MenuItem>
               ))}
             </TextField>
+
             <DateTimePicker
-              label={
-                mode === "reschedule"
-                  ? "Nueva fecha y hora de inicio"
-                  : "Inicio *"
-              }
+              label="Inicio *"
+              ampm
               value={startDT ? new Date(startDT) : null}
+              disablePast
               onChange={(newValue) => {
                 if (newValue) {
-                  setStartDT(format(newValue, "yyyy-MM-dd'T'HH:mm"));
-                  if (endDT && newValue >= new Date(endDT)) {
-                    const newEnd = addMinutes(newValue, 30);
+                  const startStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
+                  setStartDT(startStr);
+
+                  const currentEnd = endDT ? new Date(endDT) : null;
+                  if (!currentEnd || newValue >= currentEnd) {
+                    const duration = 30;
+                    const newEnd = addMinutes(newValue, duration);
+
                     setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
                   }
                 } else {
                   setStartDT("");
                 }
               }}
-              slotProps={{ textField: { size: "small", fullWidth: true } }}
-            />
-            <DateTimePicker
-              label={
-                mode === "reschedule" ? "Nueva fecha y hora de fin" : "Fin *"
-              }
-              value={endDT ? new Date(endDT) : null}
-              onChange={(newValue) =>
-                setEndDT(newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "")
-              }
-              disabled={!startDT}
-              minDateTime={startDT ? new Date(startDT) : undefined}
-              slotProps={{ textField: { size: "small", fullWidth: true } }}
-            />
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 2,
+              slotProps={{
+                textField: { size: "small", fullWidth: true },
               }}
-            >
-              <DateTimePicker
-                label="Inicio *"
-                value={startDT ? new Date(startDT) : null}
-                disablePast
-                onChange={(newValue) => {
-                  if (newValue) {
-                    const startStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
-                    setStartDT(startStr);
+            />
 
-                    const currentEnd = endDT ? new Date(endDT) : null;
-                    if (!currentEnd || newValue >= currentEnd) {
-                      const duration = 30;
-                      const newEnd = addMinutes(newValue, duration);
+            <DateTimePicker
+              label="Fin *"
+              ampm
+              value={endDT ? new Date(endDT) : null}
+              onChange={(newValue) => {
+                setEndDT(
+                  newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "",
+                );
+              }}
+              disabled={!startDT}
+              minDateTime={
+                startDT ? addMinutes(new Date(startDT), 5) : undefined
+              }
+              slotProps={{
+                textField: { size: "small", fullWidth: true },
+              }}
+            />
 
-                      setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
-                    }
-                  } else {
-                    setStartDT("");
-                  }
-                }}
-                slotProps={{
-                  textField: { size: "small", fullWidth: true },
-                }}
-              />
-
-              <DateTimePicker
-                label="Fin *"
-                value={endDT ? new Date(endDT) : null}
-                onChange={(newValue) => {
-                  setEndDT(
-                    newValue ? format(newValue, "yyyy-MM-dd'T'HH:mm") : "",
-                  );
-                }}
-                disabled={!startDT}
-                minDateTime={
-                  startDT ? addMinutes(new Date(startDT), 5) : undefined
-                }
-                slotProps={{
-                  textField: { size: "small", fullWidth: true },
-                }}
-              />
-            </Box>
             <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
               <Button variant="outlined" onClick={() => setMode("view")}>
                 Volver
@@ -487,39 +454,53 @@ function SessionModal({
       </Box>
     </Drawer>
   );
-}
+};
 
 interface AddSessionModalProps {
   appointment: Appointment | null;
-  staffList: any[];
+  staffList: Staff[];
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function AddSessionModal({
+const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
   appointment,
   staffList,
   open,
   onClose,
   onSaved,
-}: AddSessionModalProps) {
+}) => {
   const queryClient = useQueryClient();
-  const [staffId, setStaffId] = useState("");
+  const [staff, setStaff] = useState<Staff | null>(null);
   const [startDT, setStartDT] = useState("");
   const [endDT, setEndDT] = useState("");
-  const [duration, setDuration] = useState(30);
+  const [duration, setDuration] = useState(0);
   const [notes, setNotes] = useState("");
 
-  const DURATION_OPTIONS = Array.from(
-    { length: 10 },
-    (_, i) => (i + 1) * 5 + 10,
-  );
+  useEffect(() => {
+    if (startDT && endDT) {
+      const duration = differenceInMinutes(new Date(endDT), new Date(startDT));
+      setDuration(duration);
+    }
+  }, [startDT, endDT]);
+
+  const checkConflict = (staff: Staff | null, start: string, end: string) => {
+    if (!staff || !start || !end || !appointment?.sessions) return false;
+    const newStart = new Date(start);
+    const newEnd = new Date(end);
+    return appointment.sessions.some((s) => {
+      if (String(s.staff_id) !== String(staff.id)) return false;
+      const eStart = new Date(s.start_date_time);
+      const eEnd = new Date(s.end_date_time);
+      return newStart < eEnd && newEnd > eStart;
+    });
+  };
 
   const addMutation = useMutation({
     mutationFn: () =>
       api.addSession(appointment!.id, {
-        staff_id: staffId,
+        staff_id: staff?.id ?? "",
         start_date_time: new Date(startDT).toISOString(),
         end_date_time: new Date(endDT).toISOString(),
         estimated_duration_minutes: duration,
@@ -532,6 +513,25 @@ function AddSessionModal({
     },
     onError: (err: any) => showAlert.error("Error", err.message),
   });
+
+  const onSubmitAddSession = () => {
+    const hasConflict = checkConflict(staff, startDT, endDT);
+
+    if (hasConflict) {
+      Swal.fire({
+        title: "¿Estás seguro?",
+        text: "Uno o más especialistas ya tienen sesiones en esos horarios. ¿Deseas agendar de todas formas?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, agendar",
+        cancelButtonText: "Cancelar",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          addMutation.mutate();
+        }
+      });
+    }
+  };
 
   if (!appointment) return null;
 
@@ -569,61 +569,65 @@ function AddSessionModal({
         <Divider />
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            select
-            label="Especialista *"
-            value={staffId}
-            onChange={(e) => setStaffId(e.target.value)}
-            fullWidth
-            size="small"
-          >
-            <MenuItem value="">Seleccionar...</MenuItem>
-            {staffList.map((st) => (
-              <MenuItem key={st.id} value={st.id}>
-                {st.full_name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            type="datetime-local"
+          <Autocomplete
+            value={staff}
+            options={staffList}
+            onChange={(_, newValue: Staff | null) => {
+              setStaff(newValue);
+            }}
+            getOptionLabel={(option) => option.full_name}
+            renderInput={(params) => (
+              <TextField {...params} label="Especialista *" />
+            )}
+          />
+
+          <DateTimePicker
             label="Inicio *"
-            value={startDT}
-            onChange={(e) => {
-              setStartDT(e.target.value);
-              if (endDT && new Date(e.target.value) >= new Date(endDT)) {
-                const newEnd = addMinutes(new Date(e.target.value), 30);
-                setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+            ampm
+            value={startDT ? new Date(startDT) : null}
+            onChange={(newValue) => {
+              if (newValue) {
+                const startStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
+                setStartDT(startStr);
+                if (endDT && newValue >= new Date(endDT)) {
+                  const newEnd = addMinutes(newValue, 30);
+                  setEndDT(format(newEnd, "yyyy-MM-dd'T'HH:mm"));
+                }
+              } else {
+                setStartDT("");
               }
             }}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            size="small"
+            slotProps={{
+              textField: { fullWidth: true },
+            }}
           />
-          <TextField
-            type="datetime-local"
+
+          <DateTimePicker
             label="Fin *"
-            value={endDT}
-            onChange={(e) => setEndDT(e.target.value)}
+            ampm
+            value={endDT ? new Date(endDT) : null}
+            onChange={(newValue) => {
+              if (newValue) {
+                const endStr = format(newValue, "yyyy-MM-dd'T'HH:mm");
+                setEndDT(endStr);
+              } else {
+                setEndDT("");
+              }
+            }}
             disabled={!startDT}
-            InputProps={{ inputProps: { min: startDT } }}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            size="small"
+            minDateTime={startDT ? new Date(startDT) : undefined}
+            slotProps={{
+              textField: { fullWidth: true },
+            }}
           />
+
           <TextField
-            select
-            label="Duración estimada (referencia)"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
+            label="Duración estimada"
+            value={`${duration} minutos`}
             fullWidth
-            size="small"
-          >
-            {DURATION_OPTIONS.map((d) => (
-              <MenuItem key={d} value={d}>
-                {d} minutos
-              </MenuItem>
-            ))}
-          </TextField>
+            disabled
+          />
+
           <TextField
             multiline
             rows={3}
@@ -634,10 +638,41 @@ function AddSessionModal({
             size="small"
           />
 
+          {/* Alerta de conflicto de horario de staff */}
+          {staff &&
+            startDT &&
+            endDT &&
+            checkConflict(staff, startDT, endDT) && (
+              <Alert
+                severity="warning"
+                sx={{ py: 0, "& .MuiAlert-message": { py: 1 } }}
+              >
+                Este especialista tiene otra sesión en ese horario.
+              </Alert>
+            )}
+
+          {/* Alerta de orden cronológico */}
+          {startDT &&
+            appointment.sessions &&
+            appointment.sessions.some(
+              (s) => new Date(startDT) < new Date(s.start_date_time),
+            ) && (
+              <Alert
+                severity="error"
+                sx={{ py: 0, "& .MuiAlert-message": { py: 1 } }}
+              >
+                Esta sesión no puede comenzar antes que la sesión{" "}
+                {appointment.sessions.findIndex(
+                  (s) => new Date(startDT) < new Date(s.start_date_time),
+                ) + 1}
+                .
+              </Alert>
+            )}
+
           <Button
             variant="contained"
-            disabled={addMutation.isPending || !staffId || !startDT || !endDT}
-            onClick={() => addMutation.mutate()}
+            disabled={addMutation.isPending || !staff || !startDT || !endDT}
+            onClick={onSubmitAddSession}
             fullWidth
           >
             {addMutation.isPending ? "Guardando..." : "Agendar sesión"}
@@ -646,7 +681,7 @@ function AddSessionModal({
       </Box>
     </Drawer>
   );
-}
+};
 
 const ReservationsPage = () => {
   const queryClient = useQueryClient();
@@ -656,8 +691,10 @@ const ReservationsPage = () => {
 
   const [filters, setFilters] = useState<AppointmentFilters>({});
   const [filterPatient, setFilterPatient] = useState("");
-  const [filterService, setFilterService] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterService, setFilterService] = useState<Service | null>(null);
+  const [filterStatus, setFilterStatus] = useState<AppointmentStatus | null>(
+    null,
+  );
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
@@ -692,31 +729,25 @@ const ReservationsPage = () => {
   }, [initAppointmentId, appointments, selectedAppointment]);
 
   useEffect(() => {
-    if (
-      initSessionId &&
-      appointmentDetail &&
-      isDetailOpen &&
-      !isSessionModalOpen &&
-      !selectedSession
-    ) {
+    if (initSessionId && appointmentDetail && isDetailOpen) {
       const sess = appointmentDetail.sessions?.find(
         (s) => s.id.toString() === initSessionId,
       );
-      if (sess) {
+
+      if (sess && !selectedSession) {
         setSelectedSession({
           ...sess,
           patient_name: appointmentDetail.patient_name,
           service_name: appointmentDetail.service_name,
         });
         setIsSessionModalOpen(true);
-        setSearchParams({});
+        setSearchParams({}, { replace: true });
       }
     }
   }, [
     initSessionId,
     appointmentDetail,
     isDetailOpen,
-    isSessionModalOpen,
     selectedSession,
     setSearchParams,
   ]);
@@ -758,8 +789,8 @@ const ReservationsPage = () => {
   const applyFilters = () => {
     setFilters({
       patient_id: filterPatient ? undefined : undefined,
-      service_id: filterService || undefined,
-      status_id: filterStatus || undefined,
+      service_id: filterService?.id || undefined,
+      status_id: filterStatus?.id || undefined,
       date_from: filterDateFrom || undefined,
       date_to: filterDateTo || undefined,
     });
@@ -767,8 +798,8 @@ const ReservationsPage = () => {
 
   const clearFilters = () => {
     setFilterPatient("");
-    setFilterService("");
-    setFilterStatus("");
+    setFilterService(null);
+    setFilterStatus(null);
     setFilterDateFrom("");
     setFilterDateTo("");
     setFilters({});
@@ -953,43 +984,55 @@ const ReservationsPage = () => {
             gap: 2,
           }}
         >
-          <TextField
-            select
-            label="Servicio"
+          <Autocomplete
             value={filterService}
-            onChange={(e) => setFilterService(e.target.value)}
-            size="small"
-            fullWidth
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {servicesList.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Estado"
+            options={servicesList}
+            onChange={(_, newValue: Service | null) => {
+              setFilterService(newValue);
+            }}
+            getOptionLabel={(option) => option.name}
+            renderInput={(params) => <TextField {...params} label="Servicio" />}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                <Box
+                  component="span"
+                  sx={{
+                    width: 14,
+                    height: 14,
+                    flexShrink: 0,
+                    borderRadius: "50%",
+                    mr: 1.5,
+                    backgroundColor: option.label_color,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                  }}
+                />
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  <Typography variant="body1">{option.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.specialty_name}
+                  </Typography>
+                </Box>
+              </li>
+            )}
+          />
+
+          <Autocomplete
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            size="small"
-            fullWidth
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {appointmentStatuses.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.name}
-              </MenuItem>
-            ))}
-          </TextField>
+            options={appointmentStatuses}
+            onChange={(_, newValue: AppointmentStatus | null) => {
+              setFilterStatus(newValue);
+            }}
+            getOptionLabel={(option) => option.name}
+            renderInput={(params) => <TextField {...params} label="Estado" />}
+          />
+
           <DatePicker
             label="Desde"
             value={filterDateFrom ? parseISO(filterDateFrom) : null}
             onChange={(newValue) =>
               setFilterDateFrom(newValue ? format(newValue, "yyyy-MM-dd") : "")
             }
-            slotProps={{ textField: { size: "small", fullWidth: true } }}
+            slotProps={{ textField: { fullWidth: true } }}
           />
           <DatePicker
             label="Hasta"
@@ -997,7 +1040,7 @@ const ReservationsPage = () => {
             onChange={(newValue) =>
               setFilterDateTo(newValue ? format(newValue, "yyyy-MM-dd") : "")
             }
-            slotProps={{ textField: { size: "small", fullWidth: true } }}
+            slotProps={{ textField: { fullWidth: true } }}
           />
         </Box>
         <Box

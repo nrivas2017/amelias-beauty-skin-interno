@@ -1,13 +1,13 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import type { LaserClinicalRecord } from "@/services/types";
 
-// MUI Core Imports
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
+import Autocomplete from "@mui/material/Autocomplete";
 
 type LaserFormData = {
   tattoos_zone: string;
@@ -41,7 +41,7 @@ export function LaserClinicalForm({
   isSaving = false,
   defaultValues,
 }: LaserClinicalFormProps) {
-  const { register, watch, handleSubmit } = useForm<LaserFormData>({
+  const { register, watch, handleSubmit, control } = useForm<LaserFormData>({
     defaultValues: {
       skin_color_score: "0",
       hair_color_score: "0",
@@ -149,7 +149,6 @@ export function LaserClinicalForm({
           <TextField
             label="Enfermedades a la Piel / Otras (Ca, HTA, Epilepsia)"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ej: Ninguna"
             {...register("skin_diseases")}
@@ -158,7 +157,6 @@ export function LaserClinicalForm({
           <TextField
             label="Medicamentos Fotosensibles actuales"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ej: Isotretinoína"
             {...register("photosensitive_meds")}
@@ -167,7 +165,6 @@ export function LaserClinicalForm({
           <TextField
             label="Tatuajes (Indicar zona)"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ej: Brazo derecho"
             {...register("tattoos_zone")}
@@ -176,7 +173,6 @@ export function LaserClinicalForm({
           <TextField
             label="Implantes / Injertos (Indicar zona)"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ninguno"
             {...register("implants_zone")}
@@ -185,7 +181,6 @@ export function LaserClinicalForm({
           <TextField
             label="Placas / Prótesis / Marcapasos"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ninguno"
             {...register("plates_prosthesis_zone")}
@@ -194,7 +189,6 @@ export function LaserClinicalForm({
           <TextField
             label="Nevus Atípico (Indicar zona)"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ninguno"
             {...register("atypical_nevus_zone")}
@@ -203,7 +197,6 @@ export function LaserClinicalForm({
           <TextField
             label="Método de depilación actual"
             variant="outlined"
-            size="small"
             fullWidth
             placeholder="Ej: Máquina de afeitar, Cera"
             {...register("current_hair_removal_method")}
@@ -330,21 +323,30 @@ export function LaserClinicalForm({
               ],
             },
           ].map(({ label, field, options }) => (
-            <TextField
+            <Controller
               key={field}
-              select
-              label={label}
-              size="small"
-              fullWidth
-              SelectProps={{ native: true }} // Usa el select nativo para integrarse limpio con register()
-              {...register(field as keyof LaserFormData)}
-            >
-              {options.map((opt, i) => (
-                <option key={i} value={i}>
-                  {opt}
-                </option>
-              ))}
-            </TextField>
+              name={field as keyof LaserFormData}
+              control={control}
+              render={({ field: { onChange, value } }) => (
+                <Autocomplete
+                  disableClearable
+                  options={options}
+                  value={options[parseInt(value)] || undefined}
+                  onChange={(_, newValue) => {
+                    const score = options.indexOf(newValue as string);
+                    onChange(score.toString());
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={label}
+                      variant="outlined"
+                      fullWidth
+                    />
+                  )}
+                />
+              )}
+            />
           ))}
         </Box>
 

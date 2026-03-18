@@ -18,6 +18,7 @@ export const getServices = async (
         "sp.name as specialty_name",
         "sp.code as specialty_code",
       )
+      .orderBy("specialty_name", "asc")
       .orderBy("s.name", "asc");
     res.json(services);
   } catch (err) {
@@ -67,12 +68,14 @@ export const updateService = async (
         .json({ errors: ["El nombre del servicio es obligatorio."] });
     }
 
-    const updatedRows = await db("services").where({ id }).update({
-      name: name.trim(),
-      specialty_id: specialty_id ?? null,
-      label_color,
-      is_active: is_active ? 1 : 0,
-    });
+    const updatedRows = await db("services")
+      .where({ id })
+      .update({
+        name: name.trim(),
+        specialty_id: specialty_id ?? null,
+        label_color,
+        is_active: is_active ? 1 : 0,
+      });
 
     if (updatedRows === 0) {
       return res.status(404).json({ message: "Servicio no encontrado" });

@@ -6,6 +6,8 @@ import {
   Calendar,
   dateFnsLocalizer,
   Views,
+  type EventProps,
+  type SlotInfo,
   type View,
 } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -22,6 +24,19 @@ import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 
+interface EventList {
+  id: string | number;
+  title: string;
+  start: Date;
+  end: Date;
+  resourceId: string | number; // staff_id
+  color: string;
+  status: string;
+  patient_id: string | number;
+  patient: string;
+  appointment_id: string | number;
+}
+
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -32,7 +47,7 @@ const localizer = dateFnsLocalizer({
 
 const AgendaPage = () => {
   const navigate = useNavigate();
-  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SlotInfo | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -63,26 +78,27 @@ const AgendaPage = () => {
     }));
   }, [staffList]);
 
-  const myEventsList = useMemo(() => {
+  const myEventsList: EventList[] = useMemo(() => {
     return sessions.map((session) => ({
       id: session.id,
-      title: session.service_name || "Servicio",
+      title: session.service_name,
       start: new Date(session.start_date_time),
       end: new Date(session.end_date_time),
       resourceId: session.staff_id,
-      color: session.label_color || "#3b82f6",
+      color: session.label_color,
       status: session.session_status,
+      patient_id: session.patient_id,
       patient: session.patient_name,
       appointment_id: session.appointment_id,
     }));
   }, [sessions]);
 
-  const handleSelectSlot = (slotInfo: any) => {
+  const handleSelectSlot = (slotInfo: SlotInfo) => {
     setSelectedSlot(slotInfo);
     setIsDrawerOpen(true);
   };
 
-  const handleSelectEvent = (event: any) => {
+  const handleSelectEvent = (event: EventList) => {
     if (event.appointment_id && event.id) {
       navigate(
         `/reservations?appointment_id=${event.appointment_id}&session_id=${event.id}`,
@@ -92,7 +108,7 @@ const AgendaPage = () => {
     }
   };
 
-  const EventComponent = ({ event }: any) => {
+  const EventComponent = ({ event }: EventProps<EventList>) => {
     const startTime = format(event.start, "HH:mm");
     const endTime = format(event.end, "HH:mm");
 

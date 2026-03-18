@@ -19,7 +19,7 @@ export const getSessions = async (
       .join("appointments as a", "s.appointment_id", "a.id")
       .join("patients as p", "a.patient_id", "p.id")
       .join("services as sv", "a.service_id", "sv.id")
-      .leftJoin("specialties as sp", "sv.specialty_id", "sp.id")
+      .join("specialties as sp", "sv.specialty_id", "sp.id")
       .join("staff as st", "s.staff_id", "st.id")
       .join("session_statuses as ss", "s.status_id", "ss.id")
       .select(
@@ -31,6 +31,7 @@ export const getSessions = async (
         "s.session_number",
         "s.notes",
         "s.close_notes",
+        "p.patient_id as patient_id",
         "p.full_name as patient_name",
         "sv.name as service_name",
         "sv.label_color",
@@ -75,8 +76,6 @@ export const getAppointments = async (
         "a.status_id",
         "ast.name as status_name",
         "ast.code as status_code",
-        "a.total_price",
-        "a.payment_method",
         "a.notes",
         "a.created_at",
       )
@@ -143,8 +142,6 @@ export const getAppointmentById = async (
         "a.status_id",
         "ast.name as status_name",
         "ast.code as status_code",
-        "a.total_price",
-        "a.payment_method",
         "a.notes",
         "a.created_at",
       )
@@ -203,15 +200,7 @@ export const createAppointment = async (
   next: NextFunction,
 ): Promise<any> => {
   try {
-    const {
-      patient_id,
-      service_id,
-      total_price,
-      payment_method,
-      notes,
-      sessions,
-      laserRecord,
-    } = req.body;
+    const { patient_id, service_id, notes, sessions, laserRecord } = req.body;
 
     if (!patient_id || !service_id || !sessions || sessions.length === 0) {
       return res.status(400).json({
@@ -255,8 +244,6 @@ export const createAppointment = async (
         patient_id,
         service_id,
         status_id: inTreatmentId,
-        total_price: total_price || null,
-        payment_method: payment_method || null,
         notes: notes || null,
       });
 

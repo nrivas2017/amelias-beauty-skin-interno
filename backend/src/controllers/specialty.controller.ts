@@ -20,22 +20,16 @@ export const createSpecialty = async (
   next: NextFunction,
 ): Promise<any> => {
   try {
-    const { name, code, is_active } = req.body;
+    const { name, is_active } = req.body;
 
     if (!name || name.trim() === "") {
       return res
         .status(400)
         .json({ message: "El nombre de la especialidad es obligatorio" });
     }
-    if (!code || code.trim() === "") {
-      return res
-        .status(400)
-        .json({ message: "El código de la especialidad es obligatorio" });
-    }
 
     const [id] = await db("specialties").insert({
       name: name.trim(),
-      code: code.trim().toUpperCase(),
       is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1,
     });
 
@@ -43,9 +37,9 @@ export const createSpecialty = async (
   } catch (err) {
     const dbError = err as { code?: string };
     if (dbError.code === "SQLITE_CONSTRAINT") {
-      return res
-        .status(400)
-        .json({ message: "Ya existe una especialidad con este nombre o código" });
+      return res.status(400).json({
+        message: "Ya existe una especialidad con este nombre o código",
+      });
     }
     next(err);
   }
@@ -58,7 +52,7 @@ export const updateSpecialty = async (
 ): Promise<any> => {
   try {
     const { id } = req.params;
-    const { name, code, is_active } = req.body;
+    const { name, is_active } = req.body;
 
     if (!name || name.trim() === "") {
       return res
@@ -70,11 +64,10 @@ export const updateSpecialty = async (
       name: name.trim(),
       is_active: is_active ? 1 : 0,
     };
-    if (code && code.trim() !== "") {
-      updateData.code = code.trim().toUpperCase();
-    }
 
-    const updatedRows = await db("specialties").where({ id }).update(updateData);
+    const updatedRows = await db("specialties")
+      .where({ id })
+      .update(updateData);
 
     if (updatedRows === 0) {
       return res.status(404).json({ message: "Especialidad no encontrada" });
@@ -84,9 +77,9 @@ export const updateSpecialty = async (
   } catch (err) {
     const dbError = err as { code?: string };
     if (dbError.code === "SQLITE_CONSTRAINT") {
-      return res
-        .status(400)
-        .json({ message: "Ya existe una especialidad con este nombre o código" });
+      return res.status(400).json({
+        message: "Ya existe una especialidad con este nombre o código",
+      });
     }
     next(err);
   }
