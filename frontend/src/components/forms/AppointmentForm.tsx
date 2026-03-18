@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format, addMinutes, differenceInMinutes } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
@@ -240,6 +240,13 @@ export const AppointmentForm = ({
           }
         }
       });
+      return;
+    }
+
+    if (isLaser) {
+      setStep(3);
+    } else {
+      handleSave(null);
     }
   };
 
@@ -263,6 +270,22 @@ export const AppointmentForm = ({
   const steps = isLaser
     ? ["Datos", "Sesiones", "Ficha Láser"]
     : ["Datos", "Sesiones"];
+
+  const activeServices = useMemo(
+    () => servicesList.filter((s) => s.is_active),
+    [servicesList],
+  );
+
+  const availableStaff = useMemo(
+    () =>
+      staffList.filter((st) => {
+        if (!Boolean(st.is_active)) return false;
+        return st.specialties?.some(
+          (sp) => sp.id === selectedService?.specialty_id,
+        );
+      }),
+    [staffList, selectedService],
+  );
 
   return (
     <Box sx={{ mt: 3, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -293,7 +316,7 @@ export const AppointmentForm = ({
           <Box>
             <Autocomplete
               value={selectedService}
-              options={servicesList}
+              options={activeServices}
               onChange={(_, newValue: Service | null) => {
                 setSelectedService(newValue);
               }}
@@ -429,7 +452,7 @@ export const AppointmentForm = ({
 
                 <Autocomplete
                   value={row.staff}
-                  options={staffList}
+                  options={availableStaff}
                   onChange={(_, newValue: Staff | null) => {
                     updateRow(row._key, "staff", newValue);
                   }}

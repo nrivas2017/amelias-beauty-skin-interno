@@ -6,12 +6,9 @@ const skipFn = (_req: Request, _res: Response) => {
   return process.env.NODE_ENV === "test";
 };
 
-export const httpLogger = morgan(
-  ":method :url :status :response-time ms - :res[content-length]",
-  {
-    skip: skipFn,
-    stream: {
-      write: (message: string) => logger.info(message.trim()),
-    },
-  }
-);
+export const httpLogger = morgan(":method :url :status :response-time ms", {
+  skip: skipFn,
+  stream: {
+    write: (message: string) => logger.info(message.trim()),
+  },
+});

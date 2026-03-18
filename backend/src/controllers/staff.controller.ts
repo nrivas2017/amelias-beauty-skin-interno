@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import db from "../config/database";
+import { AppError } from "../utils/errors";
 
 export const getStaff = async (
   _: Request,
@@ -15,13 +16,19 @@ export const getStaff = async (
         "ss.staff_id",
         "sp.id as specialty_id",
         "sp.name as specialty_name",
-      );
+        "sp.code as specialty_code",
+      )
+      .where("sp.is_active", 1);
 
     const result = staff.map((s: any) => ({
       ...s,
       specialties: specialties
         .filter((sp: any) => sp.staff_id === s.id)
-        .map((sp: any) => ({ id: sp.specialty_id, name: sp.specialty_name })),
+        .map((sp: any) => ({
+          id: sp.specialty_id,
+          name: sp.specialty_name,
+          code: sp.specialty_code,
+        })),
     }));
 
     res.json(result);
@@ -39,7 +46,7 @@ export const createStaff = async (
     const { full_name, is_active, specialty_ids } = req.body;
 
     if (!full_name) {
-      return res.status(400).json({ message: "El nombre es obligatorio" });
+      throw new AppError("El nombre es obligatorio");
     }
 
     const [staff_id] = await db("staff").insert({
@@ -77,7 +84,7 @@ export const updateStaff = async (
     const { full_name, is_active, specialty_ids } = req.body;
 
     if (!full_name) {
-      return res.status(400).json({ message: "El nombre es obligatorio" });
+      throw new AppError("El nombre es obligatorio");
     }
 
     const updatedRows = await db("staff")
@@ -88,7 +95,7 @@ export const updateStaff = async (
       });
 
     if (updatedRows === 0) {
-      return res.status(404).json({ message: "Personal no encontrado" });
+      throw new AppError(`Personal con ID ${id} no encontrado.`);
     }
 
     if (specialty_ids !== undefined && Array.isArray(specialty_ids)) {

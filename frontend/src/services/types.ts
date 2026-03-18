@@ -29,9 +29,9 @@ export interface Specialty {
 export interface Service {
   id: string | number;
   name: string;
-  specialty_id: string | number | null;
-  specialty_name?: string;
-  specialty_code?: string;
+  specialty_id: string | number;
+  specialty_name: string;
+  specialty_code: string;
   label_color: string;
   is_active?: boolean;
 }
@@ -63,11 +63,12 @@ export interface Session {
   patient_name: string;
   service_name: string;
   label_color: string;
+  specialty_id: string | number;
   specialty_code: string;
   staff_id: string | number;
   staff_name: string;
   session_status: string;
-  session_status_code: string;
+  session_status_code: SessionStatusCode;
   status_id: string | number;
 }
 
@@ -80,8 +81,9 @@ export interface Appointment {
   service_id: string | number;
   service_name: string;
   label_color: string;
-  specialty_code?: string;
-  specialty_name?: string;
+  specialty_id: string | number;
+  specialty_code: string;
+  specialty_name: string;
   status_id: string | number;
   status_name: string;
   status_code: string;

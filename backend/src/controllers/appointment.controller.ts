@@ -7,6 +7,7 @@ import {
   getSessionStatusIdByCode,
 } from "../services/catalog.service";
 import { SessionStatusCodes } from "../config/catalogCodes";
+import { AppError } from "../utils/errors";
 
 export const getSessions = async (
   req: Request,
@@ -31,14 +32,16 @@ export const getSessions = async (
         "s.session_number",
         "s.notes",
         "s.close_notes",
-        "p.patient_id as patient_id",
+        "p.id as patient_id",
         "p.full_name as patient_name",
         "sv.name as service_name",
         "sv.label_color",
+        "sp.id as specialty_id",
         "sp.code as specialty_code",
         "st.id as staff_id",
         "st.full_name as staff_name",
         "ss.name as session_status",
+        "ss.code as session_status_code",
         "ss.id as status_id",
       );
 
@@ -61,7 +64,7 @@ export const getAppointments = async (
     let query = db("appointments as a")
       .join("patients as p", "a.patient_id", "p.id")
       .join("services as sv", "a.service_id", "sv.id")
-      .leftJoin("specialties as sp", "sv.specialty_id", "sp.id")
+      .join("specialties as sp", "sv.specialty_id", "sp.id")
       .join("appointment_statuses as ast", "a.status_id", "ast.id")
       .select(
         "a.id",
@@ -71,6 +74,7 @@ export const getAppointments = async (
         "a.service_id",
         "sv.name as service_name",
         "sv.label_color",
+        "sp.id as specialty_id",
         "sp.code as specialty_code",
         "sp.name as specialty_name",
         "a.status_id",
@@ -126,7 +130,7 @@ export const getAppointmentById = async (
     const appointment = await db("appointments as a")
       .join("patients as p", "a.patient_id", "p.id")
       .join("services as sv", "a.service_id", "sv.id")
-      .leftJoin("specialties as sp", "sv.specialty_id", "sp.id")
+      .join("specialties as sp", "sv.specialty_id", "sp.id")
       .join("appointment_statuses as ast", "a.status_id", "ast.id")
       .select(
         "a.id",
@@ -137,6 +141,7 @@ export const getAppointmentById = async (
         "a.service_id",
         "sv.name as service_name",
         "sv.label_color",
+        "sp.id as specialty_id",
         "sp.code as specialty_code",
         "sp.name as specialty_name",
         "a.status_id",
@@ -149,14 +154,19 @@ export const getAppointmentById = async (
       .first();
 
     if (!appointment) {
-      return res.status(404).json({ message: "Reserva no encontrada" });
+      throw new AppError(`Reserva con ID ${id} no encontrada.`);
     }
 
     const sessions = await db("sessions as s")
+      .join("appointments as a", "s.appointment_id", "a.id")
       .join("session_statuses as ss", "s.status_id", "ss.id")
-      .leftJoin("staff as st", "s.staff_id", "st.id")
+      .join("staff as st", "s.staff_id", "st.id")
+      .join("services as sv", "a.service_id", "sv.id")
+      .join("specialties as sp", "sv.specialty_id", "sp.id")
+      .join("patients as p", "a.patient_id", "p.id")
       .select(
         "s.id",
+        "s.appointment_id",
         "s.session_number",
         "s.start_date_time",
         "s.end_date_time",
@@ -165,11 +175,17 @@ export const getAppointmentById = async (
         "s.actual_end_time",
         "s.notes",
         "s.close_notes",
-        "s.status_id",
-        "ss.name as session_status",
-        "ss.code as session_status_code",
+        "p.id as patient_id",
+        "p.full_name as patient_name",
+        "sv.name as service_name",
+        "sv.label_color",
+        "sp.id as specialty_id",
+        "sp.code as specialty_code",
         "s.staff_id",
         "st.full_name as staff_name",
+        "ss.name as session_status",
+        "ss.code as session_status_code",
+        "ss.id as status_id",
       )
       .where("s.appointment_id", id)
       .orderBy("s.session_number", "asc");
@@ -203,19 +219,18 @@ export const createAppointment = async (
     const { patient_id, service_id, notes, sessions, laserRecord } = req.body;
 
     if (!patient_id || !service_id || !sessions || sessions.length === 0) {
-      return res.status(400).json({
-        message:
-          "patient_id, service_id y al menos una sesión son obligatorios.",
-      });
+      throw new AppError(
+        "patient_id, service_id y al menos una sesión son obligatorios.",
+      );
     }
 
     // Validar que las sesiones no finalicen antes que inicien y estén en orden cronológico
     for (let i = 0; i < sessions.length; i++) {
       const curr = sessions[i];
       if (new Date(curr.end_date_time) <= new Date(curr.start_date_time)) {
-        return res.status(400).json({
-          message: `La sesión ${i + 1} no puede finalizar antes de iniciar.`,
-        });
+        throw new AppError(
+          `La sesión ${i + 1} no puede finalizar antes de iniciar.`,
+        );
       }
     }
 
@@ -224,17 +239,57 @@ export const createAppointment = async (
       const prevStart = new Date(sessions[i - 1].start_date_time);
       const currStart = new Date(sessions[i].start_date_time);
       if (currStart < prevStart) {
-        return res.status(400).json({
-          message: `La sesión ${i + 1} no puede comenzar antes que la sesión ${i}. Las sesiones deben estar en orden cronológico ascendente.`,
-        });
+        throw new AppError(
+          `La sesión ${i + 1} no puede comenzar antes que la sesión ${i}. Las sesiones deben estar en orden cronológico ascendente.`,
+        );
       }
     }
 
     const service = await db("services as s")
-      .leftJoin("specialties as sp", "s.specialty_id", "sp.id")
-      .select("sp.code as specialty_code")
+      .join("specialties as sp", "s.specialty_id", "sp.id")
+      .select("s.specialty_id", "sp.code as specialty_code", "s.is_active")
       .where("s.id", service_id)
       .first();
+
+    if (!service) {
+      throw new AppError(`Servicio con ID ${service_id} no encontrado.`);
+    }
+    if (!service.is_active) {
+      throw new AppError(`El servicio seleccionado no está activo.`);
+    }
+
+    const staffIds = sessions.map((s: any) => s.staff_id);
+    const staffRecords = await db("staff")
+      .whereIn("id", staffIds)
+      .select("id", "is_active");
+    const staffSpecialties = await db("staff_specialties").whereIn(
+      "staff_id",
+      staffIds,
+    );
+
+    for (let i = 0; i < sessions.length; i++) {
+      const staffId = sessions[i].staff_id;
+      const staff = staffRecords.find((s) => s.id === staffId);
+
+      if (!staff) {
+        throw new AppError(`Especialista con ID ${staffId} no encontrado.`);
+      }
+      if (!staff.is_active) {
+        throw new AppError(`El especialista seleccionado no está activo.`);
+      }
+
+      if (service.specialty_id) {
+        const hasSpec = staffSpecialties.some(
+          (ss) =>
+            ss.staff_id === staffId && ss.specialty_id === service.specialty_id,
+        );
+        if (!hasSpec) {
+          throw new AppError(
+            `El especialista no tiene la especialidad requerida para este servicio`,
+          );
+        }
+      }
+    }
 
     const inTreatmentId = await getAppointmentStatusIdByCode("IN_TREATMENT");
     const scheduledId = await getSessionStatusIdByCode("SCHEDULED");
@@ -317,15 +372,36 @@ export const addSession = async (
       notes,
     } = req.body;
 
-    const appointment = await db("appointments").where({ id }).first();
+    const appointment = await db("appointments as a")
+      .join("services as s", "a.service_id", "s.id")
+      .select("a.*", "s.specialty_id")
+      .where("a.id", id)
+      .first();
+
     if (!appointment) {
-      return res.status(404).json({ message: "Reserva no encontrada" });
+      throw new AppError(`Reserva con ID ${id} no encontrada.`);
+    }
+
+    const staff = await db("staff").where({ id: staff_id }).first();
+    if (!staff || !staff.is_active) {
+      throw new AppError(`El especialista no está activo o no existe.`);
+    }
+
+    if (appointment.specialty_id) {
+      const hasSpec = await db("staff_specialties")
+        .where({ staff_id, specialty_id: appointment.specialty_id })
+        .first();
+      if (!hasSpec) {
+        throw new AppError(
+          "El especialista no tiene la especialidad requerida para este servicio",
+        );
+      }
     }
 
     if (new Date(end_date_time) <= new Date(start_date_time)) {
-      return res.status(400).json({
-        message: "La fecha y hora de fin debe ser posterior a la de inicio.",
-      });
+      throw new AppError(
+        "La fecha y hora de fin debe ser posterior a la de inicio.",
+      );
     }
 
     const cancelledByPatientId = await getSessionStatusIdByCode(
@@ -346,9 +422,9 @@ export const addSession = async (
       const lastStart = new Date(lastActiveSession.start_date_time);
       const newStart = new Date(start_date_time);
       if (newStart < lastStart) {
-        return res.status(400).json({
-          message: `La nueva sesión no puede comenzar antes que la sesión #${lastActiveSession.session_number} (${lastActiveSession.start_date_time}). Las sesiones deben estar en orden cronológico ascendente.`,
-        });
+        throw new AppError(
+          `La nueva sesión no puede comenzar antes que la sesión #${lastActiveSession.session_number} (${lastActiveSession.start_date_time}). Las sesiones deben estar en orden cronológico ascendente.`,
+        );
       }
     }
 
@@ -397,7 +473,32 @@ export const updateSession = async (
 
     const session = await db("sessions").where({ id: req.params.id }).first();
     if (!session) {
-      return res.status(404).json({ message: "Sesión no encontrada" });
+      throw new AppError(`Sesión con ID ${req.params.id} no encontrada.`);
+    }
+
+    if (staff_id !== undefined && staff_id !== "") {
+      const staff = await db("staff").where({ id: staff_id }).first();
+      if (!staff || !staff.is_active)
+        return res
+          .status(400)
+          .json({ message: "El especialista no está activo o no existe" });
+
+      const appointment = await db("appointments as a")
+        .join("services as s", "a.service_id", "s.id")
+        .select("s.specialty_id")
+        .where("a.id", session.appointment_id)
+        .first();
+
+      if (appointment.specialty_id) {
+        const hasSpec = await db("staff_specialties")
+          .where({ staff_id, specialty_id: appointment.specialty_id })
+          .first();
+        if (!hasSpec) {
+          throw new AppError(
+            "El especialista no tiene la especialidad requerida para este servicio",
+          );
+        }
+      }
     }
 
     const finalStart =
@@ -406,9 +507,9 @@ export const updateSession = async (
       end_date_time !== undefined ? end_date_time : session.end_date_time;
 
     if (new Date(finalEnd) <= new Date(finalStart)) {
-      return res.status(400).json({
-        message: "La fecha y hora de fin debe ser posterior a la de inicio.",
-      });
+      throw new AppError(
+        "La fecha y hora de fin debe ser posterior a la de inicio.",
+      );
     }
 
     // Validar cronología si se cambia la fecha de inicio
@@ -422,18 +523,18 @@ export const updateSession = async (
       if (currentIndex > 0) {
         const prevSession = allSessions[currentIndex - 1];
         if (new Date(start_date_time) < new Date(prevSession.start_date_time)) {
-          return res.status(400).json({
-            message: `La nueva fecha de inicio no puede ser anterior a la sesión #${prevSession.session_number} (${prevSession.start_date_time}).`,
-          });
+          throw new AppError(
+            `La nueva fecha de inicio no puede ser anterior a la sesión #${prevSession.session_number} (${prevSession.start_date_time}).`,
+          );
         }
       }
 
       if (currentIndex < allSessions.length - 1) {
         const nextSession = allSessions[currentIndex + 1];
         if (new Date(start_date_time) > new Date(nextSession.start_date_time)) {
-          return res.status(400).json({
-            message: `La nueva fecha de inicio no puede ser posterior a la sesión #${nextSession.session_number} (${nextSession.start_date_time}).`,
-          });
+          throw new AppError(
+            `La nueva fecha de inicio no puede ser posterior a la sesión #${nextSession.session_number} (${nextSession.start_date_time}).`,
+          );
         }
       }
     }
@@ -506,7 +607,7 @@ export const completeAppointment = async (
 
     const appointment = await db("appointments").where({ id }).first();
     if (!appointment) {
-      return res.status(404).json({ message: "Reserva no encontrada" });
+      throw new AppError(`Reserva con ID ${id} no encontrada.`);
     }
 
     // Verificar que no queden sesiones pendientes usando los códigos del catálogo
@@ -522,9 +623,9 @@ export const completeAppointment = async (
       .whereIn("status_id", [scheduledId, confirmedId]);
 
     if (pendingSessions.length > 0) {
-      return res.status(400).json({
-        message: `No se puede finalizar la reserva porque tiene ${pendingSessions.length} sesión(es) pendiente(s). Finaliza o cancela cada sesión antes de cerrar la reserva.`,
-      });
+      throw new AppError(
+        `No se puede finalizar la reserva porque tiene ${pendingSessions.length} sesión(es) pendiente(s). Finaliza o cancela cada sesión antes de cerrar la reserva.`,
+      );
     }
 
     const completedAppointmentId =
@@ -552,7 +653,7 @@ export const getLaserRecord = async (
       .first();
 
     if (!record) {
-      return res.status(404).json({ message: "Ficha láser no encontrada" });
+      throw new AppError(`Ficha láser con ID ${id} no encontrada.`);
     }
 
     const zones = await db("laser_treatment_zones").where({
@@ -579,7 +680,7 @@ export const updateLaserRecord = async (
       .first();
 
     if (!record) {
-      return res.status(404).json({ message: "Ficha láser no encontrada" });
+      throw new AppError(`Ficha láser con ID ${id} no encontrada.`);
     }
 
     await db.transaction(async (trx: Knex.Transaction) => {
@@ -616,7 +717,7 @@ export const deleteSession = async (
 
     const session = await db("sessions").where({ id }).first();
     if (!session) {
-      return res.status(404).json({ message: "Sesión no encontrada" });
+      throw new AppError(`Sesión con ID ${id} no encontrada.`);
     }
 
     const completedId = await getSessionStatusIdByCode("COMPLETED");
@@ -626,9 +727,9 @@ export const deleteSession = async (
       session.status_id === completedId ||
       session.status_id === finalizedId
     ) {
-      return res.status(400).json({
-        message: "No se puede eliminar una sesión finalizada o completada.",
-      });
+      throw new AppError(
+        "No se puede eliminar una sesión finalizada o completada.",
+      );
     }
 
     await db("sessions").where({ id }).delete();

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import db from "../config/database";
+import { AppError } from "../utils/errors";
 
 const validatePatientData = (data: any) => {
   const errors: string[] = [];
@@ -44,7 +45,9 @@ export const createPatient = async (
   try {
     const errors = validatePatientData(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ errors });
+      throw new AppError(
+        `Errores en la creación del paciente: ${errors.join(", ")}`,
+      );
     }
 
     const {
@@ -85,7 +88,9 @@ export const updatePatient = async (
 
     const errors = validatePatientData(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ errors });
+      throw new AppError(
+        `Errores en la actualización del paciente: ${errors.join(", ")}`,
+      );
     }
 
     const {
@@ -111,7 +116,7 @@ export const updatePatient = async (
     });
 
     if (updatedRows === 0) {
-      return res.status(404).json({ message: "Paciente no encontrado" });
+      throw new AppError(`Paciente con ID ${id} no encontrado.`);
     }
 
     res.json({ message: "Paciente actualizado exitosamente" });

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import db from "../config/database";
+import { AppError } from "../utils/errors";
 
 export const getServices = async (
   _: Request,
@@ -8,7 +9,7 @@ export const getServices = async (
 ) => {
   try {
     const services = await db("services as s")
-      .leftJoin("specialties as sp", "s.specialty_id", "sp.id")
+      .join("specialties as sp", "s.specialty_id", "sp.id")
       .select(
         "s.id",
         "s.name",
@@ -40,10 +41,26 @@ export const createService = async (
         .json({ errors: ["El nombre del servicio es obligatorio."] });
     }
 
+    if (!specialty_id) {
+      return res
+        .status(400)
+        .json({ errors: ["La especialidad del servicio es obligatoria."] });
+    }
+
+    if (
+      !label_color ||
+      typeof label_color !== "string" ||
+      label_color.trim() === ""
+    ) {
+      return res
+        .status(400)
+        .json({ errors: ["El color de la etiqueta es obligatorio."] });
+    }
+
     const [id] = await db("services").insert({
       name: name.trim(),
-      specialty_id: specialty_id || null,
-      label_color: label_color || "#3b82f6",
+      specialty_id: specialty_id,
+      label_color: label_color,
       is_active: is_active !== undefined ? is_active : 1,
     });
 
@@ -68,17 +85,33 @@ export const updateService = async (
         .json({ errors: ["El nombre del servicio es obligatorio."] });
     }
 
+    if (!specialty_id) {
+      return res
+        .status(400)
+        .json({ errors: ["La especialidad del servicio es obligatoria."] });
+    }
+
+    if (
+      !label_color ||
+      typeof label_color !== "string" ||
+      label_color.trim() === ""
+    ) {
+      return res
+        .status(400)
+        .json({ errors: ["El color de la etiqueta es obligatorio."] });
+    }
+
     const updatedRows = await db("services")
       .where({ id })
       .update({
         name: name.trim(),
-        specialty_id: specialty_id ?? null,
+        specialty_id: specialty_id,
         label_color,
         is_active: is_active ? 1 : 0,
       });
 
     if (updatedRows === 0) {
-      return res.status(404).json({ message: "Servicio no encontrado" });
+      throw new AppError(`Servicio con ID ${id} no encontrado.`);
     }
 
     res.json({ message: "Servicio actualizado exitosamente" });

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import db from "../config/database";
+import { AppError } from "../utils/errors";
 
 export const getSpecialties = async (
   _: Request,
@@ -37,9 +38,7 @@ export const createSpecialty = async (
   } catch (err) {
     const dbError = err as { code?: string };
     if (dbError.code === "SQLITE_CONSTRAINT") {
-      return res.status(400).json({
-        message: "Ya existe una especialidad con este nombre o código",
-      });
+      throw new AppError("Ya existe una especialidad con este nombre o código");
     }
     next(err);
   }
@@ -70,16 +69,14 @@ export const updateSpecialty = async (
       .update(updateData);
 
     if (updatedRows === 0) {
-      return res.status(404).json({ message: "Especialidad no encontrada" });
+      throw new AppError(`Especialidad con ID ${id} no encontrada.`);
     }
 
     res.json({ message: "Especialidad actualizada exitosamente" });
   } catch (err) {
     const dbError = err as { code?: string };
     if (dbError.code === "SQLITE_CONSTRAINT") {
-      return res.status(400).json({
-        message: "Ya existe una especialidad con este nombre o código",
-      });
+      throw new AppError("Ya existe una especialidad con este nombre o código");
     }
     next(err);
   }

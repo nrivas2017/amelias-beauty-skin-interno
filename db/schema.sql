@@ -51,7 +51,7 @@ INSERT INTO session_statuses (name, code) VALUES
 CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    specialty_id INTEGER,
+    specialty_id INTEGER NOT NULL,
     label_color TEXT DEFAULT '#3b82f6',
     is_active INTEGER DEFAULT 1,
     FOREIGN KEY (specialty_id) REFERENCES specialties(id)

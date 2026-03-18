@@ -72,10 +72,12 @@ const AgendaPage = () => {
   });
 
   const resourceMap = useMemo(() => {
-    return staffList.map((staff) => ({
-      resourceId: staff.id,
-      resourceTitle: `${staff.full_name}`,
-    }));
+    return staffList
+      .filter((staff) => staff.is_active)
+      .map((staff) => ({
+        resourceId: staff.id,
+        resourceTitle: `${staff.full_name}`,
+      }));
   }, [staffList]);
 
   const myEventsList: EventList[] = useMemo(() => {

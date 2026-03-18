@@ -7,10 +7,8 @@ const consoleFormat = printf(({ level, message, timestamp, stack }) => {
   return `${timestamp} [${level}]: ${stack || message}`;
 });
 
-
-
 const logger = winston.createLogger({
-  level: env.NODE_ENV === "production" ? "warn" : "debug",
+  level: "debug",
   transports: [
     new winston.transports.Console({
       format: combine(

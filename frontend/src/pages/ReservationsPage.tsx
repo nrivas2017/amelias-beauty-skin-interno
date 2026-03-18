@@ -13,7 +13,6 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Drawer from "@mui/material/Drawer";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
@@ -105,10 +104,17 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
 
   const [startDT, setStartDT] = useState("");
   const [endDT, setEndDT] = useState("");
-  const [staffId, setStaffId] = useState("");
+  const [staff, setStaff] = useState<Staff | null>(null);
 
   const [closeStatus, setCloseStatus] = useState<SessionStatusCode | "">("");
   const [closeNotes, setCloseNotes] = useState("");
+
+  const availableRescheduleStaff = useMemo(() => {
+    return staffList.filter((st) => {
+      if (!st.is_active) return false;
+      return st.specialties?.some((sp) => sp.id === session?.specialty_id);
+    });
+  }, [staffList, session]);
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateSessionDTO) =>
@@ -138,15 +144,18 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
         format(parseISO(session.start_date_time), "yyyy-MM-dd'T'HH:mm"),
       );
       setEndDT(format(parseISO(session.end_date_time), "yyyy-MM-dd'T'HH:mm"));
-      setStaffId(String(session.staff_id));
+      setStaff(
+        availableRescheduleStaff.find((st) => st.id === session.staff_id) ||
+          null,
+      );
       setCloseNotes("");
       setCloseStatus("");
     }
-  }, [session, open]);
+  }, [availableRescheduleStaff, session, open]);
 
   const saveReschedule = () => {
     updateMutation.mutate({
-      staff_id: staffId,
+      staff_id: staff?.id,
       start_date_time: new Date(startDT).toISOString(),
       end_date_time: new Date(endDT).toISOString(),
     });
@@ -333,20 +342,18 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
             <Typography variant="subtitle2" fontWeight="bold">
               Reagendar sesión
             </Typography>
-            <TextField
-              select
-              label="Especialista"
-              value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
-              fullWidth
-              size="small"
-            >
-              {staffList.map((st) => (
-                <MenuItem key={st.id} value={st.id}>
-                  {st.full_name}
-                </MenuItem>
-              ))}
-            </TextField>
+
+            <Autocomplete
+              value={staff}
+              options={availableRescheduleStaff}
+              onChange={(_, newValue: Staff | null) => {
+                setStaff(newValue);
+              }}
+              getOptionLabel={(option) => option.full_name}
+              renderInput={(params) => (
+                <TextField {...params} label="Especialista" />
+              )}
+            />
 
             <DateTimePicker
               label="Inicio *"
@@ -478,6 +485,13 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
   const [duration, setDuration] = useState(0);
   const [notes, setNotes] = useState("");
 
+  const availableRescheduleStaff = useMemo(() => {
+    return staffList.filter((st) => {
+      if (!st.is_active) return false;
+      return st.specialties?.some((sp) => sp.id === appointment?.specialty_id);
+    });
+  }, [staffList, appointment]);
+
   useEffect(() => {
     if (startDT && endDT) {
       const duration = differenceInMinutes(new Date(endDT), new Date(startDT));
@@ -571,7 +585,7 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Autocomplete
             value={staff}
-            options={staffList}
+            options={availableRescheduleStaff}
             onChange={(_, newValue: Staff | null) => {
               setStaff(newValue);
             }}
@@ -729,7 +743,7 @@ const ReservationsPage = () => {
   }, [initAppointmentId, appointments, selectedAppointment]);
 
   useEffect(() => {
-    if (initSessionId && appointmentDetail && isDetailOpen) {
+    if (appointmentDetail && isDetailOpen) {
       const sess = appointmentDetail.sessions?.find(
         (s) => s.id.toString() === initSessionId,
       );
@@ -832,7 +846,10 @@ const ReservationsPage = () => {
     setIsDetailOpen(true);
   };
 
-  const sessions = appointmentDetail?.sessions ?? [];
+  const sessions = useMemo(
+    () => appointmentDetail?.sessions ?? [],
+    [appointmentDetail],
+  );
 
   // Definición de columnas DataGrid
   const columns: GridColDef[] = useMemo(
