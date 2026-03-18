@@ -17,9 +17,9 @@ app.use(httpLogger);
 app.use("/api", routes);
 
 // --- Serve frontend for Electron ---
-const isElectron = process.versions.hasOwnProperty("electron");
+const isPackaged = __dirname.includes("app.asar");
 
-const frontendPath = isElectron
+const frontendPath = isPackaged
   ? path.join(__dirname, "../frontend")
   : path.join(__dirname, "../../frontend/dist");
 

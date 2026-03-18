@@ -15,13 +15,13 @@ const getConfig = (): EnvConfig => {
   const NODE_ENV = process.env.NODE_ENV || "development";
 
   let DB_PATH = "";
-  const isElectron = process.versions.hasOwnProperty("electron");
+  const isPackaged = __dirname.includes("app.asar");
 
-  const bundledDbPath = isElectron
+  const bundledDbPath = isPackaged
     ? path.join(__dirname, "../../db/amelias.db")
     : path.resolve(__dirname, "../../../db/amelias.db");
 
-  if (isElectron) {
+  if (isPackaged) {
     const { app } = require("electron");
 
     const userDataPath = app.getPath("userData");
