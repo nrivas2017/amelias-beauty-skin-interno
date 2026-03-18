@@ -17,6 +17,7 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
@@ -39,10 +40,15 @@ import {
 import Autocomplete from "@mui/material/Autocomplete";
 import Alert from "@mui/material/Alert";
 import Swal from "sweetalert2";
+import Tooltip from "@mui/material/Tooltip";
+import { generateReservationPDF } from "@/utils/reservationsExport";
 
 const fmtDate = (dt: string) => {
   try {
-    return format(parseISO(dt), "dd MMM yyyy, HH:mm", { locale: es });
+    const utcDateStr =
+      dt.includes("T") && dt.endsWith("Z") ? dt : `${dt.replace(" ", "T")}Z`;
+
+    return format(parseISO(utcDateStr), "dd MMM yyyy, HH:mm", { locale: es });
   } catch {
     return dt;
   }
@@ -1146,9 +1152,24 @@ const ReservationsPage = () => {
                     {appointmentDetail.patient_name}
                   </Typography>
                 </Box>
-                <IconButton onClick={() => setIsDetailOpen(false)} size="small">
-                  <CloseIcon />
-                </IconButton>
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Tooltip title="Descargar PDF">
+                    <IconButton
+                      onClick={() => generateReservationPDF(appointmentDetail)}
+                      color="primary"
+                      sx={{ bgcolor: "primary.50" }}
+                    >
+                      <PictureAsPdfIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <IconButton
+                    onClick={() => setIsDetailOpen(false)}
+                    size="small"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
               </Box>
 
               <Divider />
@@ -1237,6 +1258,158 @@ const ReservationsPage = () => {
                   </Box>
                 )}
               </Box>
+
+              {/* Ficha Clínica Láser (solo se muestra si la reserva incluye estos datos) */}
+              {appointmentDetail.laserRecord && (
+                <Box>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    sx={{ mb: 2 }}
+                  >
+                    Ficha Clínica Láser
+                  </Typography>
+                  <Box
+                    sx={{
+                      bgcolor: "info.50",
+                      p: 2.5,
+                      borderRadius: 2,
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 2.5,
+                      border: 1,
+                      borderColor: "info.200",
+                    }}
+                  >
+                    {/* Zonas a tratar */}
+                    {appointmentDetail.laserRecord.zones &&
+                      appointmentDetail.laserRecord.zones.length > 0 && (
+                        <Box sx={{ gridColumn: "span 2" }}>
+                          <Typography
+                            variant="caption"
+                            color="info.800"
+                            textTransform="uppercase"
+                            fontWeight="bold"
+                          >
+                            Zonas a tratar
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 1,
+                              mt: 1,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {appointmentDetail.laserRecord.zones.map(
+                              (zone: any, i: number) => (
+                                <Chip
+                                  key={i}
+                                  label={
+                                    typeof zone === "string"
+                                      ? zone
+                                      : zone.zone_name
+                                  }
+                                  size="small"
+                                  color="info"
+                                  sx={{ fontWeight: 500 }}
+                                />
+                              ),
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+
+                    {/* Fototipo y Método */}
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="info.800"
+                        textTransform="uppercase"
+                        fontWeight="bold"
+                      >
+                        Fototipo (Fitzpatrick)
+                      </Typography>
+                      <Typography variant="body2" color="info.900">
+                        Tipo{" "}
+                        {appointmentDetail.laserRecord.fitzpatrick_type ||
+                          "N/A"}{" "}
+                        (Puntaje:{" "}
+                        {appointmentDetail.laserRecord.total_score || 0})
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="info.800"
+                        textTransform="uppercase"
+                        fontWeight="bold"
+                      >
+                        Método depilación actual
+                      </Typography>
+                      <Typography variant="body2" color="info.900">
+                        {appointmentDetail.laserRecord
+                          .current_hair_removal_method || "No especificado"}
+                      </Typography>
+                    </Box>
+
+                    {/* Antecedentes Médicos */}
+                    <Box sx={{ gridColumn: "span 2" }}>
+                      <Typography
+                        variant="caption"
+                        color="info.800"
+                        textTransform="uppercase"
+                        fontWeight="bold"
+                        sx={{ mb: 1, display: "block" }}
+                      >
+                        Antecedentes Médicos (Contraindicaciones)
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: 1.5,
+                          bgcolor: "rgba(255,255,255,0.5)",
+                          p: 1.5,
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography variant="body2" color="info.900">
+                          <b>Enfermedades a la piel:</b>{" "}
+                          {appointmentDetail.laserRecord.skin_diseases ||
+                            "Ninguna"}
+                        </Typography>
+                        <Typography variant="body2" color="info.900">
+                          <b>Medicamentos:</b>{" "}
+                          {appointmentDetail.laserRecord.photosensitive_meds ||
+                            "Ninguno"}
+                        </Typography>
+                        <Typography variant="body2" color="info.900">
+                          <b>Tatuajes:</b>{" "}
+                          {appointmentDetail.laserRecord.tattoos_zone ||
+                            "Ninguno"}
+                        </Typography>
+                        <Typography variant="body2" color="info.900">
+                          <b>Implantes/Injertos:</b>{" "}
+                          {appointmentDetail.laserRecord.implants_zone ||
+                            "Ninguno"}
+                        </Typography>
+                        <Typography variant="body2" color="info.900">
+                          <b>Prótesis/Placas:</b>{" "}
+                          {appointmentDetail.laserRecord
+                            .plates_prosthesis_zone || "Ninguno"}
+                        </Typography>
+                        <Typography variant="body2" color="info.900">
+                          <b>Nevus atípico:</b>{" "}
+                          {appointmentDetail.laserRecord.atypical_nevus_zone ||
+                            "Ninguno"}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+              )}
 
               {/* Lista de sesiones */}
               <Box>
