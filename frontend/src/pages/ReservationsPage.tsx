@@ -121,6 +121,7 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
       api.updateSession(session!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       onSaved();
       onClose();
     },
@@ -131,6 +132,7 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
     mutationFn: (id: string | number) => api.deleteSession(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       onSaved();
       onClose();
     },
@@ -180,7 +182,7 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
   if (!session) return null;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
+    <Drawer anchor="right" open={open} onClose={onClose} disableEnforceFocus>
       <Box
         sx={{
           width: { xs: "100vw", sm: 400 },
@@ -377,7 +379,7 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
                 }
               }}
               slotProps={{
-                textField: { size: "small", fullWidth: true },
+                textField: { fullWidth: true },
               }}
             />
 
@@ -395,7 +397,7 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
                 startDT ? addMinutes(new Date(startDT), 5) : undefined
               }
               slotProps={{
-                textField: { size: "small", fullWidth: true },
+                textField: { fullWidth: true },
               }}
             />
 
@@ -522,6 +524,7 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       onSaved();
       onClose();
     },
@@ -544,13 +547,16 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
           addMutation.mutate();
         }
       });
+      return;
     }
+
+    addMutation.mutate();
   };
 
   if (!appointment) return null;
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
+    <Drawer anchor="right" open={open} onClose={onClose} disableEnforceFocus>
       <Box
         sx={{
           width: { xs: "100vw", sm: 400 },
@@ -649,7 +655,6 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             fullWidth
-            size="small"
           />
 
           {/* Alerta de conflicto de horario de staff */}
@@ -1100,6 +1105,7 @@ const ReservationsPage = () => {
         anchor="right"
         open={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
+        disableEnforceFocus
       >
         <Box
           sx={{

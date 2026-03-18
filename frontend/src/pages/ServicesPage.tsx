@@ -12,7 +12,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Chip from "@mui/material/Chip";
@@ -20,11 +19,12 @@ import Divider from "@mui/material/Divider";
 
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
+import Autocomplete from "@mui/material/Autocomplete";
 
 const defaultFormData: CreateServiceDTO = {
   name: "",
-  specialty_id: null,
-  label_color: "#3b82f6",
+  specialty_id: "",
+  label_color: "",
   is_active: true,
 };
 
@@ -299,28 +299,20 @@ const ServicesPage: FunctionComponent = () => {
           />
 
           <Box>
-            <TextField
-              select
-              label="Especialidad"
-              value={formData.specialty_id || ""}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  specialty_id: e.target.value ? Number(e.target.value) : null,
-                })
+            <Autocomplete
+              value={
+                specialties.find((s) => s.id === formData.specialty_id) || null
               }
-              fullWidth
-              variant="outlined"
-            >
-              <MenuItem value="">
-                <em>Sin especialidad</em>
-              </MenuItem>
-              {specialties.map((sp) => (
-                <MenuItem key={sp.id} value={sp.id}>
-                  {sp.name}
-                </MenuItem>
-              ))}
-            </TextField>
+              options={specialties}
+              onChange={(_, newValue: Specialty | null) => {
+                setFormData({ ...formData, specialty_id: newValue?.id || "" });
+              }}
+              getOptionLabel={(option) => option.name}
+              renderInput={(params) => (
+                <TextField {...params} label="Especialidad *" />
+              )}
+            />
+
             <Typography
               variant="caption"
               color="text.secondary"

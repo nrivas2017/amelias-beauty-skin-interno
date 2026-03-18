@@ -162,7 +162,11 @@ const StaffPage = () => {
                   key={sp.id}
                   label={sp.name}
                   size="small"
-                  variant="outlined"
+                  sx={{
+                    bgcolor: "secondary.50",
+                    color: "secondary.main",
+                    fontWeight: 500,
+                  }}
                 />
               ))}
             </Box>
