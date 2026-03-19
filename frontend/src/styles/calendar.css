@@ -102,3 +102,45 @@
 .rbc-day-bg {
   border-left-color: #e2e8f0;
 }
+
+.rbc-toolbar {
+  margin-bottom: 1.5rem !important;
+  align-items: center;
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1976d2;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  padding: 0 1rem;
+}
+.rbc-toolbar button {
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  border-radius: 8px !important;
+  transition: all 0.2s;
+}
+
+.rbc-toolbar button:hover {
+  background-color: #f0f7ff !important;
+  color: #1976d2 !important;
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: #1976d2 !important;
+  color: white !important;
+  border-color: #1976d2 !important;
+  box-shadow: none !important;
+}
+
+.rbc-time-content .rbc-day-slot,
+.rbc-time-header-content .rbc-header {
+  border-left: 2px solid #cbd5e1 !important;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #e2e8f0 !important;
+}

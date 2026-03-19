@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale/es";
@@ -23,6 +23,11 @@ import Typography from "@mui/material/Typography";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
+import type { Staff } from "@/services/types";
+import Autocomplete from "@mui/material/Autocomplete";
+import TextField from "@mui/material/TextField";
+import Chip from "@mui/material/Chip";
+import FlowerAnimation from "@/components/FlowerAnimation";
 
 interface EventList {
   id: string | number;
@@ -71,29 +76,46 @@ const AgendaPage = () => {
     queryFn: () => api.getSessions(),
   });
 
+  const [selectedStaff, setSelectedStaff] = useState<Staff[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  const activeStaffList = useMemo(
+    () => staffList.filter((s) => s.is_active),
+    [staffList],
+  );
+
+  useEffect(() => {
+    if (activeStaffList.length > 0 && !hasInitialized) {
+      setSelectedStaff([activeStaffList[0]]);
+      setHasInitialized(true);
+    }
+  }, [activeStaffList, hasInitialized]);
+
   const resourceMap = useMemo(() => {
-    return staffList
-      .filter((staff) => staff.is_active)
-      .map((staff) => ({
-        resourceId: staff.id,
-        resourceTitle: `${staff.full_name}`,
-      }));
-  }, [staffList]);
+    return selectedStaff.map((staff) => ({
+      resourceId: staff.id,
+      resourceTitle: staff.full_name,
+    }));
+  }, [selectedStaff]);
 
   const myEventsList: EventList[] = useMemo(() => {
-    return sessions.map((session) => ({
-      id: session.id,
-      title: session.service_name,
-      start: new Date(session.start_date_time),
-      end: new Date(session.end_date_time),
-      resourceId: session.staff_id,
-      color: session.label_color,
-      status: session.session_status,
-      patient_id: session.patient_id,
-      patient: session.patient_name,
-      appointment_id: session.appointment_id,
-    }));
-  }, [sessions]);
+    const selectedIds = new Set(selectedStaff.map((s) => s.id));
+
+    return sessions
+      .filter((session) => selectedIds.has(session.staff_id))
+      .map((session) => ({
+        id: session.id,
+        title: session.service_name,
+        start: new Date(session.start_date_time),
+        end: new Date(session.end_date_time),
+        resourceId: session.staff_id,
+        color: session.label_color,
+        status: session.session_status,
+        patient_id: session.patient_id,
+        patient: session.patient_name,
+        appointment_id: session.appointment_id,
+      }));
+  }, [sessions, selectedStaff]);
 
   const handleSelectSlot = (slotInfo: SlotInfo) => {
     setSelectedSlot(slotInfo);
@@ -193,6 +215,55 @@ const AgendaPage = () => {
     );
   };
 
+  const [showAnimation, setShowAnimation] = useState(false);
+  const [_, setClickCount] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSecretClick = () => {
+    if (showAnimation) return;
+
+    setClickCount((prevCount) => {
+      const nuevoConteo = prevCount + 1;
+
+      if (nuevoConteo === 3) {
+        setShowAnimation(true);
+        return 0;
+      }
+      return nuevoConteo;
+    });
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      setClickCount(0);
+    }, 1500);
+  };
+
+  const CustomResourceHeader = ({ resource }: any) => {
+    const isSpecialStaff = (name: string | undefined | null) => {
+      if (!name) return false;
+
+      const cleanName = name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      return (
+        cleanName.includes("maria jose") ||
+        cleanName.includes("mariajose") ||
+        cleanName.includes("cote")
+      );
+    };
+
+    const isTargetStaff = isSpecialStaff(resource.resourceTitle as string);
+
+    const handleClick = () => {
+      if (isTargetStaff) handleSecretClick();
+    };
+
+    return <Box onClick={handleClick}>{resource.resourceTitle}</Box>;
+  };
+
   return (
     <Box
       sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}
@@ -233,6 +304,71 @@ const AgendaPage = () => {
         </Button>
       </Box>
 
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          bgcolor: "background.paper",
+          p: 2,
+          borderRadius: 2,
+          boxShadow: 1,
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          options={activeStaffList}
+          getOptionLabel={(option) => option.full_name}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          value={selectedStaff}
+          onChange={(_, newValue) => setSelectedStaff(newValue)}
+          sx={{ minWidth: { xs: "100%", sm: 400 } }}
+          size="small"
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Filtrar por Especialistas"
+              placeholder="Seleccionar..."
+            />
+          )}
+          renderValue={(value, getTagProps) =>
+            value.map((option, index) => (
+              <Chip
+                {...getTagProps({ index })}
+                key={option.id}
+                label={option.full_name}
+                size="small"
+                sx={{
+                  bgcolor: "secondary.50",
+                  color: "secondary.main",
+                  fontWeight: 500,
+                }}
+              />
+            ))
+          }
+          renderOption={(props, option) => (
+            <li {...props} key={option.id}>
+              <Box sx={{ display: "flex", flexDirection: "column" }}>
+                <Chip
+                  label={option.full_name}
+                  size="small"
+                  sx={{
+                    bgcolor: "secondary.50",
+                    color: "secondary.main",
+                    fontWeight: 500,
+                  }}
+                />
+              </Box>
+            </li>
+          )}
+        />
+        <Typography variant="body2" color="text.secondary">
+          Selecciona uno o varios profesionales para ver u ocultar sus agendas.
+        </Typography>
+      </Box>
+
       {/* Contenedor del Calendario */}
       <Box
         sx={{
@@ -267,6 +403,7 @@ const AgendaPage = () => {
           max={new Date(new Date().setHours(22, 0, 0, 0))}
           components={{
             event: EventComponent,
+            resourceHeader: CustomResourceHeader,
           }}
           eventPropGetter={() => ({
             style: {
@@ -284,6 +421,9 @@ const AgendaPage = () => {
             day: "Día",
           }}
           culture="es"
+          formats={{
+            dayHeaderFormat: "EEEE dd ' - ' MMMM yyyy",
+          }}
         />
       </Box>
 
@@ -333,6 +473,10 @@ const AgendaPage = () => {
           </Box>
         </Box>
       </Drawer>
+
+      {showAnimation && (
+        <FlowerAnimation onAnimationEnd={() => setShowAnimation(false)} />
+      )}
     </Box>
   );
 };

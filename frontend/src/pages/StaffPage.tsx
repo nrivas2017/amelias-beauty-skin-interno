@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { showAlert } from "@/lib/alerts";
@@ -20,6 +20,7 @@ import Divider from "@mui/material/Divider";
 
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
+import FlowerAnimation from "@/components/FlowerAnimation";
 
 const defaultFormData = {
   full_name: "",
@@ -119,6 +120,30 @@ const StaffPage = () => {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  const [showAnimation, setShowAnimation] = useState(false);
+  const [_, setClickCount] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSecretClick = () => {
+    if (showAnimation) return;
+
+    setClickCount((prevCount) => {
+      const nuevoConteo = prevCount + 1;
+
+      if (nuevoConteo === 3) {
+        setShowAnimation(true);
+        return 0;
+      }
+      return nuevoConteo;
+    });
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      setClickCount(0);
+    }, 1500);
+  };
+
   const columns: GridColDef[] = useMemo(
     () => [
       {
@@ -126,6 +151,34 @@ const StaffPage = () => {
         headerName: "Nombre",
         flex: 1,
         minWidth: 200,
+        renderCell: (params) => {
+          const isSpecialStaff = (name: string | undefined | null) => {
+            if (!name) return false;
+
+            const cleanName = name
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "");
+
+            return (
+              cleanName.includes("maria jose") ||
+              cleanName.includes("mariajose") ||
+              cleanName.includes("cote")
+            );
+          };
+
+          const isTargetStaff = isSpecialStaff(params.value as string);
+
+          return (
+            <Box
+              onClick={() => {
+                if (isTargetStaff) handleSecretClick();
+              }}
+            >
+              {params.value}
+            </Box>
+          );
+        },
       },
       {
         field: "specialties",
@@ -379,6 +432,10 @@ const StaffPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {showAnimation && (
+        <FlowerAnimation onAnimationEnd={() => setShowAnimation(false)} />
+      )}
     </Box>
   );
 };

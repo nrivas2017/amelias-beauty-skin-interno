@@ -796,6 +796,7 @@ const ReservationsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["appointment"] });
       setIsDetailOpen(false);
     },
     onError: (err: any) => showAlert.error("Error", err.message),
@@ -806,6 +807,7 @@ const ReservationsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["appointment"] });
       setIsDetailOpen(false);
     },
     onError: (err: any) => showAlert.error("Error", err.message),
@@ -1052,6 +1054,18 @@ const ReservationsPage = () => {
             }}
             getOptionLabel={(option) => option.name}
             renderInput={(params) => <TextField {...params} label="Estado" />}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  <Chip
+                    size="small"
+                    label={option.name}
+                    color={getStatusColor(option.name)}
+                    sx={{ fontWeight: 500 }}
+                  />
+                </Box>
+              </li>
+            )}
           />
 
           <DatePicker

@@ -21,6 +21,36 @@ import CloseIcon from "@mui/icons-material/Close";
 
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
+import Chip from "@mui/material/Chip";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale/es";
+import { useNavigate } from "react-router-dom";
+
+const fmtDate = (dt: string) => {
+  try {
+    const utcDateStr =
+      dt.includes("T") && dt.endsWith("Z") ? dt : `${dt.replace(" ", "T")}Z`;
+
+    return format(parseISO(utcDateStr), "dd MMM yyyy, HH:mm", { locale: es });
+  } catch {
+    return dt;
+  }
+};
+
+const getStatusColor = (
+  statusName: string,
+): "info" | "success" | "error" | "default" => {
+  switch (statusName) {
+    case "En tratamiento":
+      return "info";
+    case "Finalizada":
+      return "success";
+    case "Cancelada":
+      return "error";
+    default:
+      return "default";
+  }
+};
 
 const defaultFormData: CreatePatientDTO = {
   full_name: "",
@@ -35,6 +65,7 @@ const defaultFormData: CreatePatientDTO = {
 
 const PatientsPage: FunctionComponent = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -47,6 +78,14 @@ const PatientsPage: FunctionComponent = () => {
     queryKey: ["patients"],
     queryFn: api.getPatients,
   });
+
+  const { data: patientAppointments = [], isLoading: isLoadingAppointments } =
+    useQuery({
+      queryKey: ["appointments", "patient", selectedPatient?.id],
+      queryFn: () =>
+        api.getAppointments({ patient_id: selectedPatient?.id as number }),
+      enabled: !!selectedPatient?.id && isSheetOpen,
+    });
 
   const createMutation = useMutation({
     mutationFn: api.createPatient,
@@ -603,20 +642,95 @@ const PatientsPage: FunctionComponent = () => {
                 </Box>
               </Box>
 
-              {/* Historial de Citas (Próximamente) */}
+              {/* Historial de Citas */}
               <Box>
                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Historial de Citas
+                  Historial de Reservas
                 </Typography>
-                <Divider sx={{ mb: 1 }} />
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  fontStyle="italic"
-                >
-                  Próximamente: Aquí se listarán las sesiones de depilación,
-                  masajes, etc. agendadas para este paciente.
-                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                {isLoadingAppointments ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Cargando historial...
+                  </Typography>
+                ) : patientAppointments.length === 0 ? (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    fontStyle="italic"
+                  >
+                    El paciente no tiene reservas registradas.
+                  </Typography>
+                ) : (
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
+                  >
+                    {patientAppointments.map((apt) => (
+                      <Box
+                        key={apt.id}
+                        onClick={() => {
+                          setIsSheetOpen(false);
+                          navigate(`/reservations?appointment_id=${apt.id}`);
+                        }}
+                        sx={{
+                          border: 1,
+                          borderColor: "grey.200",
+                          borderRadius: 2,
+                          p: 1.5,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          bgcolor: "background.paper",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          "&:hover": {
+                            bgcolor: "grey.50",
+                            borderColor: "primary.main",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                          },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {apt.service_name}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Reserva #{apt.id} • {fmtDate(apt.created_at)}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            size="small"
+                            label={apt.status_name}
+                            color={getStatusColor(apt.status_name)}
+                            sx={{
+                              height: 20,
+                              fontSize: "0.65rem",
+                              fontWeight: 500,
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ display: "flex", gap: 2, mt: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Especialidad: {apt.specialty_name || "—"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Sesiones: {apt.session_count || 0}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
               </Box>
             </Box>
           )}
