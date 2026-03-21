@@ -5,6 +5,13 @@ import { AppError } from "../utils/errors";
 const validatePatientData = (data: any) => {
   const errors: string[] = [];
   if (
+    !data.national_id ||
+    typeof data.national_id !== "string" ||
+    data.national_id.trim() === ""
+  ) {
+    errors.push("El RUT es obligatorio.");
+  }
+  if (
     !data.full_name ||
     typeof data.full_name !== "string" ||
     data.full_name.trim() === ""
@@ -25,7 +32,7 @@ const validatePatientData = (data: any) => {
 };
 
 export const getPatients = async (
-  req: Request,
+  _: Request,
   res: Response,
   next: NextFunction,
 ) => {
@@ -61,7 +68,15 @@ export const createPatient = async (
       medical_treatment,
     } = req.body;
 
+    const national_id = req.body.national_id.trim().toUpperCase();
+
+    const existingPatient = await db("patients").where({ national_id }).first();
+    if (existingPatient) {
+      throw new AppError("El RUT ingresado ya se encuentra registrado.");
+    }
+
     const [id] = await db("patients").insert({
+      national_id,
       full_name,
       age: age || 0,
       email: email || "",
@@ -104,7 +119,18 @@ export const updatePatient = async (
       medical_treatment,
     } = req.body;
 
+    const national_id = req.body.national_id.trim().toUpperCase();
+
+    const existingPatient = await db("patients")
+      .where({ national_id })
+      .andWhere("id", "!=", id)
+      .first();
+    if (existingPatient) {
+      throw new AppError("El RUT ingresado ya se encuentra registrado por otro paciente.");
+    }
+
     const updatedRows = await db("patients").where({ id }).update({
+      national_id,
       full_name,
       age,
       email,

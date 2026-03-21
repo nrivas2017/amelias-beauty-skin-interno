@@ -38,6 +38,7 @@ export interface Service {
 
 export interface Patient {
   id: string | number;
+  national_id: string;
   full_name: string;
   age: number;
   email: string;
@@ -76,6 +77,7 @@ export interface Appointment {
   id: string | number;
   patient_id: string | number;
   patient_name: string;
+  patient_national_id: string;
   patient_phone?: string;
   patient_email?: string;
   service_id: string | number;

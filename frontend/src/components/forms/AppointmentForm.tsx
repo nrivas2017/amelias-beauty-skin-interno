@@ -3,6 +3,8 @@ import { format, addMinutes, differenceInMinutes } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
+import { PatientFormModal } from "./PatientFormModal";
+import { formatRut } from "@/utils/rut";
 import { LaserClinicalForm } from "@/components/forms/LaserClinicalForm";
 import type {
   CreateSessionDTO,
@@ -57,6 +59,11 @@ export const AppointmentForm = ({
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [pendingPatientId, setPendingPatientId] = useState<
+    string | number | null
+  >(null);
+
   const [sessionRows, setSessionRows] = useState<SessionRow[]>([
     {
       _key: 0,
@@ -106,6 +113,16 @@ export const AppointmentForm = ({
     queryKey: ["patients"],
     queryFn: api.getPatients,
   });
+
+  useEffect(() => {
+    if (pendingPatientId && patients.length > 0) {
+      const found = patients.find((p) => p.id === pendingPatientId);
+      if (found) {
+        setSelectedPatient(found);
+        setPendingPatientId(null);
+      }
+    }
+  }, [patients, pendingPatientId]);
 
   const isLaser = selectedService?.specialty_code === SPECIALTY_LASER;
 
@@ -301,17 +318,29 @@ export const AppointmentForm = ({
       {/* ── Paso 1: Paciente y Servicio ────────────────────────────────── */}
       {step === 1 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <Autocomplete
-            value={selectedPatient}
-            options={patients}
-            onChange={(_, newValue: Patient | null) => {
-              setSelectedPatient(newValue);
-            }}
-            getOptionLabel={(option) => `${option.full_name} - ${option.email}`}
-            renderInput={(params) => (
-              <TextField {...params} label="Paciente *" />
-            )}
-          />
+          <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+            <Autocomplete
+              sx={{ flexGrow: 1 }}
+              value={selectedPatient}
+              options={patients}
+              onChange={(_, newValue: Patient | null) => {
+                setSelectedPatient(newValue);
+              }}
+              getOptionLabel={(option) =>
+                `${option.full_name} - ${formatRut(option.national_id || "")}`
+              }
+              renderInput={(params) => (
+                <TextField {...params} label="Paciente *" />
+              )}
+            />
+            <Button
+              variant="outlined"
+              onClick={() => setIsPatientModalOpen(true)}
+              sx={{ height: 56, whiteSpace: "nowrap" }}
+            >
+              + Nuevo
+            </Button>
+          </Box>
 
           <Box>
             <Autocomplete
@@ -610,7 +639,7 @@ export const AppointmentForm = ({
         </Box>
       )}
 
-      {/* ── Paso 3: Ficha Láser (solo si aplica) ──────────────────────── */}
+      {/* Paso 3: Ficha Láser (solo si aplica) */}
       {step === 3 && isLaser && (
         <Box>
           <LaserClinicalForm
@@ -622,6 +651,19 @@ export const AppointmentForm = ({
             isSaving={createMutation.isPending}
           />
         </Box>
+      )}
+
+      {/* Modal para Crear Paciente desde el Agendamiento */}
+      {isPatientModalOpen && (
+        <PatientFormModal
+          open={isPatientModalOpen}
+          onClose={() => setIsPatientModalOpen(false)}
+          editingPatient={null}
+          existingPatients={patients}
+          onSuccess={(createdId) => {
+            setPendingPatientId(createdId);
+          }}
+        />
       )}
     </Box>
   );

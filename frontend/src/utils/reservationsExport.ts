@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale/es";
+import { formatRut } from "./rut";
 
 const fmtDate = (dt: string) => {
   try {
@@ -36,8 +37,13 @@ export const generateReservationPDF = (appointmentDetail: Appointment) => {
   doc.text("Información del Paciente", 14, 40);
   doc.setFont("helvetica", "normal");
   doc.text(`Nombre: ${appointmentDetail.patient_name}`, 14, 47);
-  doc.text(`Teléfono: ${appointmentDetail.patient_phone || "N/A"}`, 14, 54);
-  doc.text(`Email: ${appointmentDetail.patient_email || "N/A"}`, 14, 61);
+  doc.text(
+    `RUT: ${formatRut(appointmentDetail.patient_national_id || "") || "N/A"}`,
+    14,
+    54,
+  );
+  doc.text(`Teléfono: ${appointmentDetail.patient_phone || "N/A"}`, 14, 61);
+  doc.text(`Email: ${appointmentDetail.patient_email || "N/A"}`, 14, 68);
 
   // 3. Información de la Reserva
   doc.setFont("helvetica", "bold");
@@ -48,7 +54,7 @@ export const generateReservationPDF = (appointmentDetail: Appointment) => {
   doc.text(`Estado: ${appointmentDetail.status_name}`, 105, 61);
   doc.text(`Fecha Creación: ${fmtDate(appointmentDetail.created_at)}`, 105, 68);
 
-  let currentY = 75;
+  let currentY = 82;
 
   // 4. Ficha Clínica Láser (Si existe)
   if (appointmentDetail.laserRecord) {

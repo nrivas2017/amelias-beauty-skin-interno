@@ -42,6 +42,7 @@ import Alert from "@mui/material/Alert";
 import Swal from "sweetalert2";
 import Tooltip from "@mui/material/Tooltip";
 import { generateReservationPDF } from "@/utils/reservationsExport";
+import { formatRut } from "@/utils/rut";
 
 const fmtDate = (dt: string) => {
   try {
@@ -885,11 +886,9 @@ const ReservationsPage = () => {
             <Typography variant="body2" fontWeight={500}>
               {params.row.patient_name}
             </Typography>
-            {params.row.patient_phone && (
-              <Typography variant="caption" color="text.secondary">
-                {params.row.patient_phone}
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary">
+              {formatRut(params.row.patient_national_id)}
+            </Typography>
           </Box>
         ),
       },
@@ -1199,7 +1198,7 @@ const ReservationsPage = () => {
                   gap: 2,
                 }}
               >
-                <Box>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
                   <Typography
                     variant="caption"
                     color="text.secondary"
@@ -1209,6 +1208,9 @@ const ReservationsPage = () => {
                   </Typography>
                   <Typography variant="body2" fontWeight="bold">
                     {appointmentDetail.patient_name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatRut(appointmentDetail.patient_national_id)}
                   </Typography>
                   {appointmentDetail.patient_phone && (
                     <Typography variant="caption" color="text.secondary">

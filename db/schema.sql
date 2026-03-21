@@ -100,8 +100,9 @@ INSERT INTO staff_specialties (staff_id, specialty_id) VALUES
 CREATE TABLE patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     full_name TEXT NOT NULL,
+    national_id TEXT NOT NULL UNIQUE,
     age INTEGER,
-    email TEXT UNIQUE,
+    email TEXT,
     address TEXT,
     phone TEXT NOT NULL,
     pregnant_lactating INTEGER DEFAULT 0,

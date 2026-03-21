@@ -1,19 +1,13 @@
 import { useState, useMemo, type FunctionComponent } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../services/api";
-import { showAlert } from "@/lib/alerts";
-import type { CreatePatientDTO, Patient } from "@/services/types";
+import type { Patient } from "@/services/types";
+import { PatientFormModal } from "../components/forms/PatientFormModal";
+import { formatRut } from "@/utils/rut";
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import Drawer from "@mui/material/Drawer";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
@@ -52,24 +46,11 @@ const getStatusColor = (
   }
 };
 
-const defaultFormData: CreatePatientDTO = {
-  full_name: "",
-  age: 0,
-  email: "",
-  address: "",
-  phone: "",
-  pregnant_lactating: false,
-  allergies: "",
-  medical_treatment: "",
-};
-
 const PatientsPage: FunctionComponent = () => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | number | null>(null);
-  const [formData, setFormData] = useState<CreatePatientDTO>(defaultFormData);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -87,48 +68,13 @@ const PatientsPage: FunctionComponent = () => {
       enabled: !!selectedPatient?.id && isSheetOpen,
     });
 
-  const createMutation = useMutation({
-    mutationFn: api.createPatient,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["patients"] });
-      closeModal();
-    },
-    onError: (err: any) => showAlert.error("Error al crear", err.message),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string | number;
-      data: Partial<CreatePatientDTO>;
-    }) => api.updatePatient(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["patients"] });
-      closeModal();
-    },
-    onError: (err: any) => showAlert.error("Error al actualizar", err.message),
-  });
-
   const handleOpenCreate = () => {
-    setEditingId(null);
-    setFormData(defaultFormData);
+    setEditingPatient(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (patient: Patient) => {
-    setEditingId(patient.id);
-    setFormData({
-      full_name: patient.full_name,
-      age: patient.age,
-      email: patient.email,
-      address: patient.address,
-      phone: patient.phone,
-      pregnant_lactating: patient.pregnant_lactating,
-      allergies: patient.allergies,
-      medical_treatment: patient.medical_treatment,
-    });
+    setEditingPatient(patient);
     setIsModalOpen(true);
   };
 
@@ -137,32 +83,21 @@ const PatientsPage: FunctionComponent = () => {
     setIsSheetOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setFormData(defaultFormData);
-    setEditingId(null);
-  };
-
-  const handleSave = () => {
-    if (!formData.full_name.trim() || !formData.phone.trim()) {
-      showAlert.warning(
-        "Campos incompletos",
-        "El nombre completo y el teléfono son obligatorios.",
-      );
-      return;
-    }
-
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const isSaving = createMutation.isPending || updateMutation.isPending;
-
   const columns: GridColDef[] = useMemo(
     () => [
+      {
+        field: "national_id",
+        headerName: "RUT",
+        flex: 0.8,
+        minWidth: 120,
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <Typography variant="body2" fontWeight={500}>
+              {formatRut(params.row.national_id || "")}
+            </Typography>
+          </Box>
+        ),
+      },
       {
         field: "full_name",
         headerName: "Nombre",
@@ -349,141 +284,12 @@ const PatientsPage: FunctionComponent = () => {
       </Box>
 
       {/* Modal / Dialogo de Creación/Edición */}
-      <Dialog open={isModalOpen} onClose={closeModal} fullWidth maxWidth="md">
-        <DialogTitle fontWeight="bold">
-          {editingId ? "Editar Paciente" : "Registrar Nuevo Paciente"}
-        </DialogTitle>
-        <Divider />
-
-        <DialogContent>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-              gap: 3,
-              pt: 1,
-            }}
-          >
-            <TextField
-              label="Nombre Completo *"
-              variant="outlined"
-              fullWidth
-              value={formData.full_name}
-              onChange={(e) =>
-                setFormData({ ...formData, full_name: e.target.value })
-              }
-              placeholder="Ej: Ana Gabriela Silva"
-            />
-            <TextField
-              label="Edad"
-              variant="outlined"
-              type="number"
-              fullWidth
-              value={formData.age || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, age: parseInt(e.target.value) || 0 })
-              }
-            />
-            <TextField
-              label="Teléfono *"
-              variant="outlined"
-              fullWidth
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              placeholder="+56 9 1234 5678"
-            />
-            <TextField
-              label="Email"
-              variant="outlined"
-              type="email"
-              fullWidth
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              placeholder="correo@ejemplo.com"
-            />
-            <TextField
-              label="Dirección"
-              variant="outlined"
-              fullWidth
-              sx={{ gridColumn: { sm: "span 2" } }}
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
-              }
-              placeholder="Calle, Número, Comuna"
-            />
-
-            <Box sx={{ gridColumn: { sm: "span 2" }, mt: 2 }}>
-              <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                Información Médica Básica
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.pregnant_lactating}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        pregnant_lactating: e.target.checked,
-                      })
-                    }
-                    color="primary"
-                  />
-                }
-                label="¿Está embarazada o en periodo de lactancia?"
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Alergias Conocidas"
-                variant="outlined"
-                fullWidth
-                sx={{ mb: 3 }}
-                value={formData.allergies}
-                onChange={(e) =>
-                  setFormData({ ...formData, allergies: e.target.value })
-                }
-                placeholder="Ej: Alergia al látex, penicilina..."
-              />
-
-              <TextField
-                label="Tratamientos Médicos Actuales"
-                variant="outlined"
-                fullWidth
-                value={formData.medical_treatment}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    medical_treatment: e.target.value,
-                  })
-                }
-                placeholder="Ej: Tratamiento para la tiroides..."
-              />
-            </Box>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={closeModal} variant="outlined" color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            variant="contained"
-            color="primary"
-            disableElevation
-          >
-            {isSaving ? "Guardando..." : "Guardar Paciente"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <PatientFormModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        editingPatient={editingPatient}
+        existingPatients={patients}
+      />
 
       {/* Drawer (Reemplazo del Sheet lateral para ver la Ficha) */}
       <Drawer
