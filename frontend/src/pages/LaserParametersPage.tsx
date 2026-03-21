@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { showAlert } from "@/lib/alerts";
@@ -19,9 +19,15 @@ import Paper from "@mui/material/Paper";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import CircularProgress from "@mui/material/CircularProgress";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchIcon from "@mui/icons-material/Search";
 
-import { DataGrid } from "@mui/x-data-grid";
-import type { GridColDef, GridRowModel } from "@mui/x-data-grid";
+import {
+  MaterialReactTable,
+  useMaterialReactTable,
+} from "material-react-table";
+import type { MRT_ColumnDef } from "material-react-table";
 import dayjs from "dayjs";
 import { formatRut } from "@/utils/rut";
 
@@ -59,6 +65,7 @@ const LaserParametersPage = () => {
   const [selectedZoneId, setSelectedZoneId] = useState<string | number | null>(
     null,
   );
+  const [patientSearch, setPatientSearch] = useState("");
 
   const { data: patients = [], isLoading: loadingPatients } = useQuery<
     LaserPatient[]
@@ -96,43 +103,91 @@ const LaserParametersPage = () => {
       queryClient.invalidateQueries({
         queryKey: ["laser-sessions", selectedPatientId],
       });
-      // showAlert.success("Guardado", "Parámetros actualizados correctamente");
     },
     onError: (err: any) => {
       showAlert.error("Error", err.message);
     },
   });
 
-  // Build rows and columns for the DataGrid whenever selectedZone or sessions change
-  const { columns, rows } = useMemo(() => {
+  const filteredPatients = useMemo(() => {
+    return patients.filter((p) => {
+      const search = patientSearch.toLowerCase();
+      const cleanRut = p.national_id.replace(/[^0-9kK]/g, "").toLowerCase();
+      return (
+        p.full_name.toLowerCase().includes(search) ||
+        cleanRut.includes(search) ||
+        p.national_id.toLowerCase().includes(search)
+      );
+    });
+  }, [patients, patientSearch]);
+
+  const columns = useMemo<MRT_ColumnDef<any>[]>(() => {
     if (!selectedZoneId || !sessions.length) {
-      return { columns: [], rows: [] };
+      return [];
     }
 
-    // CABECERAS DE COLUMNAS (1 fija + N sesiones)
-    const dynamicColumns: GridColDef[] = [
+    const dynamicColumns: MRT_ColumnDef<any>[] = [
       {
-        field: "property_name",
-        headerName: "Parámetro",
-        width: 220,
-        sortable: false,
-        disableColumnMenu: true,
+        accessorKey: "property_name",
+        header: "Parámetro",
+        size: 220,
+        enableEditing: false,
       },
     ];
 
     sessions.forEach((session, index) => {
       dynamicColumns.push({
-        field: `session_${session.id}`,
-        headerName: `Sesión ${index + 1}`,
-        width: 180,
-        sortable: false,
-        disableColumnMenu: true,
-        editable: true,
+        accessorKey: `session_${session.id}`,
+        header: `Sesión ${index + 1}`,
+        size: 180,
+        muiEditTextFieldProps: ({ cell, row }) => ({
+          type: "text",
+          disabled: !row.original._editable,
+          onBlur: async (event) => {
+            if (!row.original._editable) return;
+            const newValue = event.target.value;
+            // Solo guardar si el valor cambió
+            if (newValue === cell.getValue()) return;
+
+            const propertyId = row.original.id; // "energy_j_cm2" etc.
+            const sessionObj = session;
+
+            const currentParams =
+              sessionObj?.parameters?.find(
+                (p) => String(p.zone_id) === String(selectedZoneId),
+              ) || {};
+
+            const dataToSave: any = { ...currentParams };
+
+            if (propertyId === "general_notes") {
+              dataToSave.general_notes = newValue;
+            } else {
+              dataToSave[propertyId] = newValue;
+            }
+
+            try {
+              await upsertMutation.mutateAsync({
+                sessionId: session.id,
+                zoneId: selectedZoneId!,
+                data: dataToSave,
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          },
+        }),
       });
     });
 
-    // FILAS TRASPUESTAS
-    const dynamicRows = PARAMETER_ROWS.map((paramDef) => {
+    return dynamicColumns;
+  }, [sessions, selectedZoneId]);
+
+  const rows = useMemo(() => {
+    if (!selectedZoneId || !sessions.length) {
+      return [];
+    }
+
+    return PARAMETER_ROWS.map((paramDef) => {
       const rowData: Record<string, any> = {
         id: paramDef.id,
         property_name: paramDef.property_name,
@@ -151,7 +206,6 @@ const LaserParametersPage = () => {
         } else if (paramDef.id === "general_notes") {
           rowData[fieldKey] = session.notes || "";
         } else {
-          // Es un parámetro específico de la zona
           const paramForZone = session.parameters?.find(
             (p) => String(p.zone_id) === String(selectedZoneId),
           );
@@ -163,65 +217,57 @@ const LaserParametersPage = () => {
 
       return rowData;
     });
-
-    return { columns: dynamicColumns, rows: dynamicRows };
   }, [sessions, selectedZoneId]);
 
-  const processRowUpdate = async (
-    newRow: GridRowModel,
-    oldRow: GridRowModel,
-  ) => {
-    // Si la fila no es editable (ej: Fecha o Profesional), ignoramos
-    if (!newRow._editable) return oldRow;
-
-    // Buscamos qué columna de sesión cambió
-    let changedSessionId: string | number | null = null;
-    let newValue: string = "";
-
-    sessions.forEach((session) => {
-      const fieldKey = `session_${session.id}`;
-      if (newRow[fieldKey] !== oldRow[fieldKey]) {
-        changedSessionId = session.id;
-        newValue = newRow[fieldKey];
+  const table = useMaterialReactTable({
+    columns,
+    data: rows,
+    enableTopToolbar: false,
+    enableColumnActions: false,
+    enableColumnFilters: false,
+    enablePagination: false,
+    enableSorting: false,
+    enableBottomToolbar: false,
+    enableStickyHeader: true,
+    enableColumnPinning: true,
+    enableEditing: true,
+    editDisplayMode: "cell",
+    initialState: {
+      columnPinning: { left: ["property_name"] },
+    },
+    muiTableContainerProps: {
+      className: "mrt-scroller",
+      sx: { height: "100%", flexGrow: 1 },
+    },
+    muiTableBodyCellProps: ({ row, column }) => {
+      // Diferenciar visualmente la celda editable de las bloqueadas
+      if (!row.original._editable && column.id !== "property_name") {
+        return {
+          sx: { opacity: 0.6, bgcolor: "transparent !important" },
+        };
       }
-    });
+      return {};
+    },
+  });
 
-    if (changedSessionId && selectedZoneId) {
-      // Preparar el objeto con TODOS los parámetros actuales de esta sesión para esa zona,
-      // para no borrar los demás al hacer el PUT (el backend actualiza todos los datos)
-
-      const sessionObj = sessions.find((s) => s.id === changedSessionId);
-      const currentParams =
-        sessionObj?.parameters?.find(
-          (p) => String(p.zone_id) === String(selectedZoneId),
-        ) || {};
-
-      const dataToSave: any = { ...currentParams };
-
-      if (newRow.id === "general_notes") {
-        dataToSave.general_notes = newValue;
-      } else {
-        dataToSave[newRow.id] = newValue;
-      }
-
-      await upsertMutation.mutateAsync({
-        sessionId: changedSessionId,
-        zoneId: selectedZoneId,
-        data: dataToSave,
-      });
-
-      return newRow;
-    }
-
-    return oldRow;
-  };
-
-  // Autoseleccionar primera zona si no hay ninguna
   useMemo(() => {
     if (zones.length > 0 && !selectedZoneId) {
       setSelectedZoneId(zones[0].id);
     }
   }, [zones, selectedZoneId]);
+
+  // Auto-scroll a la derecha
+  useEffect(() => {
+    if (sessions.length > 0) {
+      const timer = setTimeout(() => {
+        const scroller = document.querySelector(".mrt-scroller");
+        if (scroller) {
+          scroller.scrollLeft = scroller.scrollWidth;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [sessions.length, selectedZoneId]);
 
   return (
     <Box
@@ -274,8 +320,24 @@ const LaserParametersPage = () => {
               fontWeight="bold"
               color="primary.900"
             >
-              Pacientes ({patients.length})
+              Pacientes ({filteredPatients.length})
             </Typography>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Buscar paciente..."
+              value={patientSearch}
+              onChange={(e) => setPatientSearch(e.target.value)}
+              sx={{ mt: 1 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                sx: { bgcolor: "background.paper" },
+              }}
+            />
           </Box>
 
           <List sx={{ flexGrow: 1, overflow: "auto", p: 0 }}>
@@ -283,15 +345,15 @@ const LaserParametersPage = () => {
               <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
                 <CircularProgress size={24} />
               </Box>
-            ) : patients.length === 0 ? (
+            ) : filteredPatients.length === 0 ? (
               <Typography
                 variant="body2"
-                sx={{ p: 2, color: "text.secondary" }}
+                sx={{ p: 2, color: "text.secondary", textAlign: "center" }}
               >
-                No hay pacientes con servicios de láser.
+                No se encontraron pacientes.
               </Typography>
             ) : (
-              patients.map((p) => (
+              filteredPatients.map((p) => (
                 <Box key={p.id}>
                   <ListItem disablePadding>
                     <ListItemButton
@@ -380,7 +442,7 @@ const LaserParametersPage = () => {
                   p: 2,
                   display: "flex",
                   flexDirection: "column",
-                  overflow: "hidden",
+                  overflow: "auto",
                 }}
               >
                 {loadingSessions && !fetchingSessions ? (
@@ -400,30 +462,13 @@ const LaserParametersPage = () => {
                       color="text.secondary"
                       sx={{ mb: 2 }}
                     >
-                      Haz doble clic en las celdas de la tabla para editar los
-                      parámetros. Los cambios se guardarán automáticamente.
+                      Haz clic en las celdas de la tabla para editar los
+                      parámetros. Los cambios se guardarán automáticamente al
+                      salir del recuadro.
                     </Typography>
 
-                    <Box sx={{ flexGrow: 1, minHeight: 400, width: "100%" }}>
-                      <DataGrid
-                        rows={rows}
-                        columns={columns}
-                        processRowUpdate={processRowUpdate}
-                        isCellEditable={(params) => params.row._editable}
-                        hideFooter
-                        disableColumnSelector
-                        disableRowSelectionOnClick
-                        sx={{
-                          "& .MuiDataGrid-row:hover": {
-                            bgcolor: "transparent",
-                          },
-                          "& .MuiDataGrid-cell--editable": {
-                            bgcolor: "action.hover",
-                            cursor: "pointer",
-                            "&:hover": { bgcolor: "action.selected" },
-                          },
-                        }}
-                      />
+                    <Box>
+                      <MaterialReactTable table={table} />
                     </Box>
                   </>
                 )}
