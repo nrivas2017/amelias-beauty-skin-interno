@@ -6,6 +6,8 @@ import PermContactCalendarIcon from "@mui/icons-material/PermContactCalendar";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
 import SchoolIcon from "@mui/icons-material/School";
 import GroupIcon from "@mui/icons-material/Group";
+import LayersIcon from "@mui/icons-material/Layers";
+import ViewListIcon from "@mui/icons-material/ViewList";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -30,6 +32,8 @@ const MainLayout: FunctionComponent = () => {
     { name: "Agenda", to: "/", icon: CalendarMonthIcon },
     { name: "Reservas", to: "/reservations", icon: ContentPasteIcon },
     { name: "Pacientes", to: "/patients", icon: PermContactCalendarIcon },
+    { name: "Parámetros Láser", to: "/laser-parameters", icon: ViewListIcon },
+    { name: "Zonas Láser", to: "/laser-zones", icon: LayersIcon },
     { name: "Servicios", to: "/services", icon: MedicalServicesIcon },
     { name: "Especialidades", to: "/specialties", icon: SchoolIcon },
     { name: "Personal", to: "/staff", icon: GroupIcon },

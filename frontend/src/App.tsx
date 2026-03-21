@@ -7,6 +7,8 @@ import PatientsPage from "./pages/PatientsPage";
 import StaffPage from "./pages/StaffPage";
 import SpecialtiesPage from "./pages/SpecialtiesPage";
 import ReservationsPage from "./pages/ReservationsPage";
+import LaserZonesPage from "./pages/LaserZonesPage";
+import LaserParametersPage from "./pages/LaserParametersPage";
 
 const App: FunctionComponent = () => {
   return (
@@ -18,6 +20,8 @@ const App: FunctionComponent = () => {
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/patients" element={<PatientsPage />} />
           <Route path="/specialties" element={<SpecialtiesPage />} />
+          <Route path="/laser-zones" element={<LaserZonesPage />} />
+          <Route path="/laser-parameters" element={<LaserParametersPage />} />
           <Route path="/staff" element={<StaffPage />} />
         </Route>
       </Routes>

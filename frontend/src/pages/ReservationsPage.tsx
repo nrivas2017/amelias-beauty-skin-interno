@@ -129,6 +129,8 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       onSaved();
       onClose();
     },
@@ -140,6 +142,8 @@ const SessionModal: FunctionComponent<SessionModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       onSaved();
       onClose();
     },
@@ -532,6 +536,8 @@ const AddSessionModal: FunctionComponent<AddSessionModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       onSaved();
       onClose();
     },
@@ -798,6 +804,8 @@ const ReservationsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointment"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       setIsDetailOpen(false);
     },
     onError: (err: any) => showAlert.error("Error", err.message),
@@ -809,6 +817,8 @@ const ReservationsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointment"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       setIsDetailOpen(false);
     },
     onError: (err: any) => showAlert.error("Error", err.message),

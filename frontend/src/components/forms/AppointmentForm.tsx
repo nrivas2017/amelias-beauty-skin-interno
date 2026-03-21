@@ -131,6 +131,8 @@ export const AppointmentForm = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["laser-patients"] });
       onClose();
     },
     onError: (err: any) => showAlert.error("Error al guardar", err.message),

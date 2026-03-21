@@ -239,7 +239,7 @@ const ServicesPage: FunctionComponent = () => {
             color="text.primary"
             gutterBottom
           >
-            Catálogo de Servicios
+            Servicios
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Administra los servicios, su especialidad y colores para la agenda.

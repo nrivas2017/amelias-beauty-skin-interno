@@ -1,5 +1,7 @@
 import { Router } from "express";
 import catalogRoutes from "./catalog.routes";
+import laserZoneRoutes from "./laserZone.routes";
+import laserParameterRoutes from "./laserParameter.routes";
 import appointmentRoutes from "./appointment.routes";
 import patientRoutes from "./patient.routes";
 import serviceRoutes from "./service.routes";
@@ -10,6 +12,12 @@ const router = Router();
 
 // @route  /api/catalogs
 router.use("/catalogs", catalogRoutes);
+
+// @route  /api/laser-zones
+router.use("/laser-zones", laserZoneRoutes);
+
+// @route  /api/laser-parameters
+router.use("/laser-parameters", laserParameterRoutes);
 
 // @route  /api/appointments
 router.use("/appointments", appointmentRoutes);

@@ -18,6 +18,12 @@ import type {
   UpdateSessionDTO,
   UpdateSpecialtyDTO,
   UpdateStaffDTO,
+  LaserZone,
+  CreateLaserZoneDTO,
+  UpdateLaserZoneDTO,
+  LaserPatient,
+  LaserSessionWithParams,
+  LaserSessionParameter,
 } from "./types";
 
 const API_URL = "http://localhost:3000/api";
@@ -115,6 +121,60 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    return handleResponse(res);
+  },
+
+  // ─── ZONAS LÁSER ─────────────────────────────────────────────────────────
+  getLaserZones: async (): Promise<LaserZone[]> => {
+    const res = await fetch(`${API_URL}/laser-zones`);
+    return handleResponse(res);
+  },
+  createLaserZone: async (data: CreateLaserZoneDTO): Promise<LaserZone> => {
+    const res = await fetch(`${API_URL}/laser-zones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+  updateLaserZone: async (
+    id: string | number,
+    data: UpdateLaserZoneDTO,
+  ): Promise<LaserZone> => {
+    const res = await fetch(`${API_URL}/laser-zones/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
+
+  // ─── PARÁMETROS LÁSER ───────────────────────────────────────────────────
+  getLaserPatients: async (): Promise<LaserPatient[]> => {
+    const res = await fetch(`${API_URL}/laser-parameters/patients`);
+    return handleResponse(res);
+  },
+  getLaserSessionsByPatient: async (
+    patientId: string | number,
+  ): Promise<LaserSessionWithParams[]> => {
+    const res = await fetch(
+      `${API_URL}/laser-parameters/patients/${patientId}/sessions`,
+    );
+    return handleResponse(res);
+  },
+  upsertLaserParameters: async (
+    sessionId: string | number,
+    zoneId: string | number,
+    data: Partial<LaserSessionParameter> & { general_notes?: string },
+  ): Promise<{ message: string }> => {
+    const res = await fetch(
+      `${API_URL}/laser-parameters/sessions/${sessionId}/zones/${zoneId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
     return handleResponse(res);
   },
 

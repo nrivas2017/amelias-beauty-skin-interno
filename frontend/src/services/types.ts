@@ -138,6 +138,47 @@ export type CreatePatientDTO = Omit<Patient, "id">;
 export type CreateSpecialtyDTO = Omit<Specialty, "id">;
 export type UpdateSpecialtyDTO = Partial<CreateSpecialtyDTO>;
 
+// Laser Zones
+export interface LaserZone {
+  id: string | number;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+export type CreateLaserZoneDTO = Omit<LaserZone, "id">;
+export type UpdateLaserZoneDTO = Partial<CreateLaserZoneDTO>;
+
+// Laser Parameters
+export interface LaserPatient {
+  id: string | number;
+  full_name: string;
+  national_id: string;
+}
+
+export interface LaserSessionParameter {
+  id?: string | number;
+  session_id: string | number;
+  zone_id: string | number;
+  mole_or_tattoo?: string;
+  energy_j_cm2?: string;
+  pulse_width_ms?: string;
+  frequency?: string;
+  laser_intensity?: string;
+  machine_used?: string;
+  reevaluation_description?: string;
+}
+
+export interface LaserSessionWithParams {
+  id: string | number;
+  appointment_id: string | number;
+  staff_id: string | number;
+  staff_name?: string;
+  start_date_time: string;
+  notes?: string;
+  service_name?: string;
+  parameters: LaserSessionParameter[];
+}
+
 // Session DTO (para crear dentro de un appointment)
 export interface CreateSessionDTO {
   staff: Staff | null;

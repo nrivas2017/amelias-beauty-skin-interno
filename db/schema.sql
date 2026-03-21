@@ -170,10 +170,40 @@ CREATE TABLE laser_clinical_records (
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
 );
 
+-- Catálogo de zonas de depilación láser
+CREATE TABLE laser_zones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    is_active INTEGER DEFAULT 1
+);
+
+INSERT INTO laser_zones (name) VALUES 
+('Rostro');
+
 -- Zonas a tratar en depilación láser (relación 1:N con la ficha clínica)
 CREATE TABLE laser_treatment_zones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     laser_record_id INTEGER NOT NULL,
-    zone_name TEXT NOT NULL,
-    FOREIGN KEY (laser_record_id) REFERENCES laser_clinical_records(id)
+    zone_id INTEGER NOT NULL,
+    FOREIGN KEY (laser_record_id) REFERENCES laser_clinical_records(id),
+    FOREIGN KEY (zone_id) REFERENCES laser_zones(id)
+);
+
+-- Parámetros de la máquina de láser por sesión y por zona
+CREATE TABLE laser_session_parameters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    zone_id INTEGER NOT NULL,
+    mole_or_tattoo TEXT,                   -- 'Lunar o Tatuaje'
+    energy_j_cm2 TEXT,                     -- 'Energía (J/cm2)'
+    pulse_width_ms TEXT,                   -- 'Ancho de Pulso (ms)'
+    frequency TEXT,                        -- 'Frecuencia'
+    laser_intensity TEXT,                  -- 'Intensidad de laser'
+    machine_used TEXT,                     -- 'Maquina utilizada'
+    reevaluation_description TEXT,         -- 'Descripción de reevaluacion'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_id, zone_id),         -- Un set de parámetros por zona por sesión
+    FOREIGN KEY (session_id) REFERENCES sessions(id),
+    FOREIGN KEY (zone_id) REFERENCES laser_zones(id)
 );
