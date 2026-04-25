@@ -6,7 +6,10 @@ import {
   getAppointmentStatusIdByCode,
   getSessionStatusIdByCode,
 } from "../services/catalog.service";
-import { SessionStatusCodes } from "../config/catalogCodes";
+import {
+  AppointmentStatusCodes,
+  SessionStatusCodes,
+} from "../config/catalogCodes";
 import { AppError } from "../utils/errors";
 
 export const getSessions = async (
@@ -293,8 +296,12 @@ export const createAppointment = async (
       }
     }
 
-    const inTreatmentId = await getAppointmentStatusIdByCode("IN_TREATMENT");
-    const scheduledId = await getSessionStatusIdByCode("SCHEDULED");
+    const inTreatmentId = await getAppointmentStatusIdByCode(
+      AppointmentStatusCodes.IN_TREATMENT,
+    );
+    const scheduledId = await getSessionStatusIdByCode(
+      SessionStatusCodes.SCHEDULED,
+    );
 
     const result = await db.transaction(async (trx: Knex.Transaction) => {
       const [appointment_id] = await trx("appointments").insert({
@@ -573,12 +580,18 @@ export const cancelAppointment = async (
     const { id } = req.params;
     const { close_notes } = req.body;
 
-    const cancelledAppointmentId =
-      await getAppointmentStatusIdByCode("CANCELLED");
-    const cancelledByStaffId =
-      await getSessionStatusIdByCode("CANCELLED_BY_STAFF");
-    const scheduledId = await getSessionStatusIdByCode("SCHEDULED");
-    const confirmedId = await getSessionStatusIdByCode("CONFIRMED");
+    const cancelledAppointmentId = await getAppointmentStatusIdByCode(
+      AppointmentStatusCodes.CANCELLED,
+    );
+    const cancelledByStaffId = await getSessionStatusIdByCode(
+      SessionStatusCodes.CANCELLED_BY_STAFF,
+    );
+    const scheduledId = await getSessionStatusIdByCode(
+      SessionStatusCodes.SCHEDULED,
+    );
+    const confirmedId = await getSessionStatusIdByCode(
+      SessionStatusCodes.CONFIRMED,
+    );
 
     await db.transaction(async (trx: Knex.Transaction) => {
       await trx("sessions")
@@ -630,8 +643,9 @@ export const completeAppointment = async (
       );
     }
 
-    const completedAppointmentId =
-      await getAppointmentStatusIdByCode("COMPLETED");
+    const completedAppointmentId = await getAppointmentStatusIdByCode(
+      AppointmentStatusCodes.COMPLETED,
+    );
 
     await db("appointments").where({ id }).update({
       status_id: completedAppointmentId,
@@ -722,8 +736,12 @@ export const deleteSession = async (
       throw new AppError(`Sesión con ID ${id} no encontrada.`);
     }
 
-    const completedId = await getSessionStatusIdByCode("COMPLETED");
-    const finalizedId = await getSessionStatusIdByCode("FINALIZED");
+    const completedId = await getSessionStatusIdByCode(
+      AppointmentStatusCodes.COMPLETED,
+    );
+    const finalizedId = await getSessionStatusIdByCode(
+      SessionStatusCodes.FINALIZED,
+    );
 
     if (
       session.status_id === completedId ||

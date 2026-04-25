@@ -33,6 +33,7 @@ interface LaserClinicalFormProps {
   onBack?: () => void;
   isSaving?: boolean;
   defaultValues?: Partial<LaserFormData>;
+  submitLabel?: string;
 }
 
 export function LaserClinicalForm({
@@ -40,6 +41,7 @@ export function LaserClinicalForm({
   onBack,
   isSaving = false,
   defaultValues,
+  submitLabel,
 }: LaserClinicalFormProps) {
   const { register, watch, handleSubmit, control } = useForm<LaserFormData>({
     defaultValues: {
@@ -416,7 +418,9 @@ export function LaserClinicalForm({
           }}
           disableElevation
         >
-          {isSaving ? "Guardando..." : "Guardar Reserva con Ficha"}
+          {isSaving
+            ? "Guardando..."
+            : submitLabel || "Guardar Reserva con Ficha"}
         </Button>
       </Box>
     </Box>

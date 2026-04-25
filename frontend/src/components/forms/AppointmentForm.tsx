@@ -13,6 +13,7 @@ import type {
   LaserClinicalRecord,
   Patient,
   Service,
+  Appointment,
 } from "@/services/types";
 
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -31,6 +32,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import Autocomplete from "@mui/material/Autocomplete";
 import type { SlotInfo } from "react-big-calendar";
 import Swal from "sweetalert2";
+import { AppointmentStatusCodes } from "@/services/catalogCodes";
 
 const SPECIALTY_LASER = "LASER_DEPILATION";
 
@@ -126,6 +128,24 @@ export const AppointmentForm = ({
 
   const isLaser = selectedService?.specialty_code === SPECIALTY_LASER;
 
+  // Detección de reserva activa duplicada
+  const { data: patientAppointments = [] } = useQuery<Appointment[]>({
+    queryKey: ["appointments", { patient_id: selectedPatient?.id }],
+    queryFn: () => api.getAppointments({ patient_id: selectedPatient!.id }),
+    enabled: !!selectedPatient,
+  });
+
+  const activeConflict = useMemo(() => {
+    if (!selectedPatient || !selectedService) return null;
+    return (
+      patientAppointments.find(
+        (a) =>
+          String(a.service_id) === String(selectedService.id) &&
+          a.status_code === AppointmentStatusCodes.IN_TREATMENT,
+      ) ?? null
+    );
+  }, [patientAppointments, selectedPatient, selectedService]);
+
   const createMutation = useMutation({
     mutationFn: api.createAppointment,
     onSuccess: () => {
@@ -207,6 +227,13 @@ export const AppointmentForm = ({
       showAlert.warning(
         "Campos incompletos",
         "Por favor selecciona un paciente y un servicio.",
+      );
+      return;
+    }
+    if (activeConflict) {
+      showAlert.warning(
+        "Reserva activa existente",
+        `Este paciente ya tiene una reserva activa de "${selectedService.name}". Ve a la sección Reservas para agregar una nueva sesión.`,
       );
       return;
     }
@@ -408,6 +435,16 @@ export const AppointmentForm = ({
             )}
           </Box>
 
+          {/* Alerta de reserva activa duplicada */}
+          {activeConflict && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              Este paciente ya tiene una reserva activa (#{activeConflict.id})
+              de <strong>{selectedService?.name}</strong>. Para agregar una
+              nueva sesión a ese tratamiento, ve a la sección{" "}
+              <strong>Reservas</strong> y busca la reserva existente.
+            </Alert>
+          )}
+
           <TextField
             label="Notas generales"
             multiline
@@ -430,6 +467,7 @@ export const AppointmentForm = ({
               onClick={goStep2}
               color="primary"
               disableElevation
+              disabled={!!activeConflict}
             >
               Siguiente
             </Button>

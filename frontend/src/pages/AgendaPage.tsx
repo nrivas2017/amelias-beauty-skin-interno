@@ -300,7 +300,7 @@ const AgendaPage = () => {
           }}
           sx={{ boxShadow: 1 }}
         >
-          + Nueva Cita
+          + Nueva Reserva
         </Button>
       </Box>
 
@@ -450,10 +450,10 @@ const AgendaPage = () => {
           >
             <Box>
               <Typography variant="h5" fontWeight="bold">
-                Gestión de Cita
+                Nueva Reserva
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Reserva una hora o completa la ficha clínica del paciente.
+                Crea una nueva reserva con su primera sesión.
               </Typography>
             </Box>
             <IconButton onClick={() => setIsDrawerOpen(false)} size="small">

@@ -5,6 +5,8 @@ import { es } from "date-fns/locale/es";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/services/api";
 import { showAlert } from "@/lib/alerts";
+import { LaserClinicalForm } from "@/components/forms/LaserClinicalForm";
+import type { LaserClinicalRecord } from "@/services/types";
 
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
@@ -18,6 +20,7 @@ import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import EditIcon from "@mui/icons-material/Edit";
 
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
@@ -736,6 +739,7 @@ const ReservationsPage = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
+  const [isEditingLaserRecord, setIsEditingLaserRecord] = useState(false);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", filters],
@@ -1288,13 +1292,31 @@ const ReservationsPage = () => {
               {/* Ficha Clínica Láser (solo se muestra si la reserva incluye estos datos) */}
               {appointmentDetail.laserRecord && (
                 <Box>
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight="bold"
-                    sx={{ mb: 2 }}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 2,
+                    }}
                   >
-                    Ficha Clínica Láser
-                  </Typography>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      Ficha Clínica Láser
+                    </Typography>
+
+                    {/* Botón Editar Ficha Láser */}
+                    {appointmentDetail.status_code ===
+                      AppointmentStatusCodes.IN_TREATMENT && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<EditIcon />}
+                        onClick={() => setIsEditingLaserRecord(true)}
+                      >
+                        Editar Ficha
+                      </Button>
+                    )}
+                  </Box>
                   <Box
                     sx={{
                       bgcolor: "info.50",
@@ -1435,6 +1457,120 @@ const ReservationsPage = () => {
                     </Box>
                   </Box>
                 </Box>
+              )}
+
+              {/* Drawer de edición de ficha láser */}
+              {appointmentDetail.laserRecord && (
+                <Drawer
+                  anchor="right"
+                  open={isEditingLaserRecord}
+                  onClose={() => setIsEditingLaserRecord(false)}
+                  disableEnforceFocus
+                >
+                  <Box
+                    sx={{
+                      width: { xs: "100vw", sm: 600, md: 700 },
+                      p: 3,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 2,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="h5" fontWeight="bold">
+                          Editar Ficha Clínica Láser
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Reserva #{appointmentDetail.id} —{" "}
+                          {appointmentDetail.patient_name}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        onClick={() => setIsEditingLaserRecord(false)}
+                        size="small"
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </Box>
+                    <Divider />
+                    <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
+                      <LaserClinicalForm
+                        defaultValues={{
+                          tattoos_zone:
+                            appointmentDetail.laserRecord.tattoos_zone || "",
+                          photosensitive_meds:
+                            appointmentDetail.laserRecord.photosensitive_meds ||
+                            "",
+                          implants_zone:
+                            appointmentDetail.laserRecord.implants_zone || "",
+                          plates_prosthesis_zone:
+                            appointmentDetail.laserRecord
+                              .plates_prosthesis_zone || "",
+                          atypical_nevus_zone:
+                            appointmentDetail.laserRecord.atypical_nevus_zone ||
+                            "",
+                          skin_diseases:
+                            appointmentDetail.laserRecord.skin_diseases || "",
+                          current_hair_removal_method:
+                            appointmentDetail.laserRecord
+                              .current_hair_removal_method || "",
+                          skin_color_score: String(
+                            appointmentDetail.laserRecord.skin_color_score ?? 0,
+                          ),
+                          hair_color_score: String(
+                            appointmentDetail.laserRecord.hair_color_score ?? 0,
+                          ),
+                          eye_color_score: String(
+                            appointmentDetail.laserRecord.eye_color_score ?? 0,
+                          ),
+                          freckles_score: String(
+                            appointmentDetail.laserRecord.freckles_score ?? 0,
+                          ),
+                          genetic_heritage_score: String(
+                            appointmentDetail.laserRecord
+                              .genetic_heritage_score ?? 0,
+                          ),
+                          burn_potential_score: String(
+                            appointmentDetail.laserRecord
+                              .burn_potential_score ?? 0,
+                          ),
+                          tan_potential_score: String(
+                            appointmentDetail.laserRecord.tan_potential_score ??
+                              0,
+                          ),
+                        }}
+                        submitLabel="Guardar Cambios"
+                        onBack={() => setIsEditingLaserRecord(false)}
+                        onSubmitData={async (data) => {
+                          try {
+                            await api.updateLaserRecord(
+                              appointmentDetail.id,
+                              data as Partial<LaserClinicalRecord>,
+                            );
+                            showAlert.success(
+                              "Ficha actualizada",
+                              "La ficha clínica láser se actualizó correctamente.",
+                            );
+                            setIsEditingLaserRecord(false);
+                            refetchDetail();
+                          } catch (err: any) {
+                            showAlert.error(
+                              "Error al guardar",
+                              err.message || "Ocurrió un error inesperado.",
+                            );
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </Drawer>
               )}
 
               {/* Lista de sesiones */}
