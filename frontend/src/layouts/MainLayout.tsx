@@ -8,6 +8,8 @@ import SchoolIcon from "@mui/icons-material/School";
 import GroupIcon from "@mui/icons-material/Group";
 import LayersIcon from "@mui/icons-material/Layers";
 import ViewListIcon from "@mui/icons-material/ViewList";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
 
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
@@ -20,13 +22,17 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 
 import logo from "../assets/logo.png";
+import { useThemeMode } from "../contexts/ThemeContext";
 
 const DRAWER_WIDTH = 256;
 
 const MainLayout: FunctionComponent = () => {
   const location = useLocation();
+  const { mode, toggleTheme } = useThemeMode();
 
   const navItems = [
     { name: "Agenda", to: "/", icon: CalendarMonthIcon },
@@ -116,6 +122,42 @@ const MainLayout: FunctionComponent = () => {
       </List>
 
       <Divider />
+
+      {/* Botón de cambio de tema */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          py: 1.5,
+        }}
+      >
+        <Tooltip
+          title={
+            mode === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"
+          }
+          arrow
+        >
+          <IconButton
+            id="theme-toggle-button"
+            onClick={toggleTheme}
+            sx={{
+              transition: "all 0.3s ease",
+              color: mode === "light" ? "grey.700" : "warning.300",
+              bgcolor: mode === "light" ? "grey.100" : "rgba(255,183,77,0.12)",
+              "&:hover": {
+                bgcolor:
+                  mode === "light" ? "grey.200" : "rgba(255,183,77,0.24)",
+                transform: "rotate(30deg)",
+              },
+            }}
+          >
+            {mode === "light" ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      <Divider />
       <Box sx={{ p: 2, textAlign: "center" }}>
         <Typography variant="caption" color="text.secondary">
           V1.0 - Acceso Interno
@@ -130,7 +172,7 @@ const MainLayout: FunctionComponent = () => {
         display: "flex",
         height: "100vh",
         width: "100%",
-        bgcolor: "grey.50",
+        bgcolor: mode === "light" ? "grey.50" : "background.default",
       }}
     >
       <Box
@@ -176,9 +218,29 @@ const MainLayout: FunctionComponent = () => {
           }}
         >
           <Toolbar variant="dense">
-            <Typography variant="subtitle1" fontWeight="bold">
+            <Typography
+              variant="subtitle1"
+              fontWeight="bold"
+              sx={{ flexGrow: 1 }}
+            >
               Amelia's Beauty Skin
             </Typography>
+
+            {/* Botón de tema en el AppBar móvil */}
+            <Tooltip
+              title={mode === "light" ? "Modo oscuro" : "Modo claro"}
+              arrow
+            >
+              <IconButton
+                onClick={toggleTheme}
+                size="small"
+                sx={{
+                  color: mode === "light" ? "grey.700" : "warning.300",
+                }}
+              >
+                {mode === "light" ? <DarkModeIcon /> : <LightModeIcon />}
+              </IconButton>
+            </Tooltip>
           </Toolbar>
         </AppBar>
 

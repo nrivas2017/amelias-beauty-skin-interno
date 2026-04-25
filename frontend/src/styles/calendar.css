@@ -144,3 +144,95 @@
 .rbc-day-slot .rbc-time-slot {
   border-top: 1px solid #e2e8f0 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MODO OSCURO — Se activa cuando el <body> tiene la clase .dark-mode
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+body.dark-mode .rbc-time-header {
+  background-color: #1e1e1e;
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .rbc-header {
+  color: #b0bec5;
+}
+
+body.dark-mode .rbc-time-view {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .rbc-timeslot-group {
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .rbc-time-gutter {
+  background-color: #1e1e1e;
+}
+
+body.dark-mode .rbc-time-gutter .rbc-timeslot-group {
+  background-color: #1e1e1e;
+}
+
+body.dark-mode .rbc-day-slot .rbc-time-slot {
+  border-top-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+body.dark-mode .rbc-day-slot .rbc-time-slot:hover {
+  background-color: rgba(144, 202, 249, 0.08);
+}
+
+body.dark-mode .rbc-event.rbc-selected {
+  box-shadow:
+    0 0 0 1px #1e1e1e,
+    0 0 0 3px #90caf9;
+}
+
+body.dark-mode .rbc-time-header-content {
+  border-left-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .rbc-day-bg {
+  border-left-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .rbc-toolbar .rbc-toolbar-label {
+  color: #90caf9;
+}
+
+body.dark-mode .rbc-toolbar button {
+  color: #b0bec5;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .rbc-toolbar button:hover {
+  background-color: rgba(144, 202, 249, 0.12) !important;
+  color: #90caf9 !important;
+}
+
+body.dark-mode .rbc-toolbar button.rbc-active {
+  background-color: #90caf9 !important;
+  color: #121212 !important;
+  border-color: #90caf9 !important;
+}
+
+body.dark-mode .rbc-time-content .rbc-day-slot,
+body.dark-mode .rbc-time-header-content .rbc-header {
+  border-left: 2px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-mode .rbc-time-content {
+  background-color: #1e1e1e;
+}
+
+body.dark-mode .rbc-time-gutter .rbc-label {
+  color: #90a4ae;
+}
+
+body.dark-mode .rbc-today {
+  background-color: rgba(144, 202, 249, 0.06);
+}
+
+body.dark-mode .rbc-label {
+  background-color: #1e1e1e;
+}
